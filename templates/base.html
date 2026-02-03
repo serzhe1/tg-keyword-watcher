@@ -1,0 +1,30 @@
+<!doctype html>
+<html lang="ru">
+<head>
+    <meta charset="utf-8"/>
+    <meta name="viewport" content="width=device-width, initial-scale=1"/>
+    <title>{{ title if title else "TG Monitor" }}</title>
+
+    <!-- Pico.css: адаптивный UI без сборки -->
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/@picocss/pico@2/css/pico.min.css">
+    <link rel="stylesheet" href="/static/app.css">
+</head>
+<body>
+<main class="container">
+    <header class="topbar">
+        <div class="brand">TG Monitor</div>
+        <nav class="tabs">
+            <a href="/dashboard">Dashboard</a>
+            <a href="/keywords">Keywords</a>
+            <a href="/logs" class="disabled">Logs</a>
+            <a href="/docs" class="disabled">Docs</a>
+        </nav>
+        <form method="post" action="/logout" class="logout">
+            <button type="submit" class="secondary">Logout</button>
+        </form>
+    </header>
+
+    {% block content %}{% endblock %}
+</main>
+</body>
+</html>

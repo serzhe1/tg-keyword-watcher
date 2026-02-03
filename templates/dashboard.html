@@ -1,0 +1,41 @@
+{% extends "base.html" %}
+{% block content %}
+
+<hgroup>
+  <h1>Dashboard</h1>
+  <p>Управление состоянием бота</p>
+</hgroup>
+
+<div class="grid">
+  <article>
+    <h3>Bot state</h3>
+    <p><strong>Enabled:</strong> {{ "YES" if bot.enabled else "NO" }}</p>
+    <p><strong>Restart requested:</strong> {{ "YES" if bot.restart_requested else "NO" }}</p>
+
+    <div class="actions">
+      {% if bot.enabled %}
+      <form method="post" action="/bot/disable">
+        <button type="submit" class="secondary">Disable</button>
+      </form>
+      {% else %}
+      <form method="post" action="/bot/enable">
+        <button type="submit">Enable</button>
+      </form>
+      {% endif %}
+
+      <form method="post" action="/bot/restart">
+        <button type="submit" class="contrast">Restart</button>
+      </form>
+    </div>
+  </article>
+
+  <article>
+    <h3>Runtime status</h3>
+    <p><strong>Connected:</strong> {{ "YES" if status.bot_connected else "NO" }}</p>
+    <p><strong>Last event:</strong> {{ status.last_event_at if status.last_event_at else "—" }}</p>
+    <p><strong>Last error:</strong> {{ status.last_error if status.last_error else "—" }}</p>
+    <small>Эти поля начнут обновляться, когда подключим Telethon worker.</small>
+  </article>
+</div>
+
+{% endblock %}
