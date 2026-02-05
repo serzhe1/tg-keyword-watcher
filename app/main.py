@@ -15,6 +15,7 @@ from app.web.routes_controls import router as controls_router
 from app.web.routes_dashboard import router as dashboard_router
 from app.web.routes_keywords import router as keywords_router
 from app.web.routes_logs import router as logs_router
+from app.web.routes_docs import router as docs_router
 
 
 def utc_now_iso() -> str:
@@ -26,7 +27,7 @@ def require_dir(path: str) -> None:
         raise RuntimeError(f"Required directory not found: {path}")
 
 
-app = FastAPI(title="tg-keyword-watcher")
+app = FastAPI(title="tg-keyword-watcher", docs_url="/api-docs", redoc_url=None)
 
 PROJECT_ROOT = "/app"
 APP_DIR = os.path.join(PROJECT_ROOT, "app")
@@ -46,6 +47,7 @@ app.include_router(dashboard_router)
 app.include_router(controls_router)
 app.include_router(keywords_router)
 app.include_router(logs_router)
+app.include_router(docs_router)
 
 
 @app.on_event("startup")

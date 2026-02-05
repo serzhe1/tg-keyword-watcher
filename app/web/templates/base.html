@@ -17,7 +17,7 @@
             <span class="nav__sep">·</span>
             <a class="nav__link {% if nav_active=='logs' %}nav__link--active{% endif %}" href="/logs">Logs</a>
             <span class="nav__sep">·</span>
-            <span class="nav__link nav__link--disabled">Docs</span>
+            <a class="nav__link {% if nav_active=='docs' %}nav__link--active{% endif %}" href="/docs">Docs</a>
         </nav>
 
         <form method="post" action="/logout" class="logout">

@@ -1,0 +1,199 @@
+{% extends "base.html" %}
+{% block title %}Docs · tg-keyword-watcher{% endblock %}
+
+{% block content %}
+<h1 class="h1">Docs</h1>
+
+<div class="card">
+    <div class="card__title">Назначение системы</div>
+    <div class="muted">
+        Бот отслеживает сообщения в каналах и группах, ищет ключевые слова и пересылает найденные сообщения
+        в целевой канал (TARGET_CHANNEL). Админка нужна, чтобы управлять работой бота и списком ключевых слов.
+    </div>
+</div>
+
+<div class="space"></div>
+
+<div class="card">
+    <div class="card__title">Основные элементы админки</div>
+    <div class="table">
+        <div class="table__row table__row--wide">
+            <div class="table__cell table__cell--num">Раздел</div>
+            <div class="table__cell">Что это</div>
+            <div class="table__cell">Как использовать</div>
+        </div>
+        <div class="table__row table__row--wide">
+            <div class="table__cell table__cell--num">Dashboard</div>
+            <div class="table__cell">Статус бота и кнопки управления</div>
+            <div class="table__cell">
+                Проверяйте статус, включайте/выключайте бота, запускайте мягкий рестарт или cleanup.
+            </div>
+        </div>
+        <div class="table__row table__row--wide">
+            <div class="table__cell table__cell--num">Keywords</div>
+            <div class="table__cell">Список ключевых слов</div>
+            <div class="table__cell">
+                Добавляйте и удаляйте слова. Поиск помогает быстро найти нужное.
+            </div>
+        </div>
+        <div class="table__row table__row--wide">
+            <div class="table__cell table__cell--num">Logs</div>
+            <div class="table__cell">Список ошибок</div>
+            <div class="table__cell">
+                Смотрите последние ошибки. Сообщения здесь укорочены, чтобы не показывать лишние детали.
+            </div>
+        </div>
+    </div>
+</div>
+
+<div class="space"></div>
+
+<div class="card">
+    <div class="card__title">Статусы на Dashboard</div>
+    <div class="table">
+        <div class="table__row table__row--wide">
+            <div class="table__cell table__cell--num">Поле</div>
+            <div class="table__cell">Значение</div>
+            <div class="table__cell">Что это значит</div>
+        </div>
+        <div class="table__row table__row--wide">
+            <div class="table__cell table__cell--num">Connected</div>
+            <div class="table__cell">YES / NO</div>
+            <div class="table__cell">
+                Бот подключен к Telegram и готов слушать сообщения.
+            </div>
+        </div>
+        <div class="table__row table__row--wide">
+            <div class="table__cell table__cell--num">Bot enabled</div>
+            <div class="table__cell">YES / NO</div>
+            <div class="table__cell">
+                Разрешено ли боту работать. Если NO — он не слушает каналы.
+            </div>
+        </div>
+        <div class="table__row table__row--wide">
+            <div class="table__cell table__cell--num">Last error</div>
+            <div class="table__cell">Текст ошибки</div>
+            <div class="table__cell">
+                Последняя ошибка (если была). При проблемах это первое место, куда нужно смотреть.
+            </div>
+        </div>
+        <div class="table__row table__row--wide">
+            <div class="table__cell table__cell--num">Last event</div>
+            <div class="table__cell">Текст события</div>
+            <div class="table__cell">
+                Последнее важное действие бота: подключение, рестарт, очистка и т.д.
+            </div>
+        </div>
+    </div>
+</div>
+
+<div class="space"></div>
+
+<div class="card">
+    <div class="card__title">Что делают кнопки</div>
+    <div class="table">
+        <div class="table__row table__row--wide">
+            <div class="table__cell table__cell--num">Кнопка</div>
+            <div class="table__cell">Действие</div>
+            <div class="table__cell">Когда использовать</div>
+        </div>
+        <div class="table__row table__row--wide">
+            <div class="table__cell table__cell--num">Enable</div>
+            <div class="table__cell">Включает работу бота</div>
+            <div class="table__cell">
+                Когда нужно возобновить мониторинг после паузы.
+            </div>
+        </div>
+        <div class="table__row table__row--wide">
+            <div class="table__cell table__cell--num">Disable</div>
+            <div class="table__cell">Останавливает работу бота</div>
+            <div class="table__cell">
+                Если нужно временно прекратить мониторинг.
+            </div>
+        </div>
+        <div class="table__row table__row--wide">
+            <div class="table__cell table__cell--num">Restart</div>
+            <div class="table__cell">Мягкий перезапуск</div>
+            <div class="table__cell">
+                Если бот “завис” или не ловит сообщения. Переподключается без выключения сервера.
+            </div>
+        </div>
+        <div class="table__row table__row--wide">
+            <div class="table__cell table__cell--num">Cleanup</div>
+            <div class="table__cell">Очистка старых данных</div>
+            <div class="table__cell">
+                Удаляет логи старше 7 дней и служебные записи старше 30 дней. Это экономит место.
+            </div>
+        </div>
+    </div>
+</div>
+
+<div class="space"></div>
+
+<div class="card">
+    <div class="card__title">Как работает Backfill (догрузка пропущенных сообщений)</div>
+    <div class="muted">
+        <div class="space"></div>
+        <div>
+            <strong>Backfill</strong> — это автоматическая проверка сообщений, которые появились,
+            пока бот был выключен или перезапускался.
+        </div>
+        <div class="space"></div>
+        <div>
+            Как это работает:
+        </div>
+        <div class="space"></div>
+        <div class="table">
+            <div class="table__row table__row--wide">
+                <div class="table__cell table__cell--num">1</div>
+                <div class="table__cell">Бот запоминает “последнее сообщение” в каждом канале.</div>
+                <div class="table__cell">
+                    Это называется checkpoint — по сути, отметка “где мы остановились”.
+                </div>
+            </div>
+            <div class="table__row table__row--wide">
+                <div class="table__cell table__cell--num">2</div>
+                <div class="table__cell">После перезапуска бот смотрит всё, что появилось после этой отметки.</div>
+                <div class="table__cell">
+                    Ищет ключевые слова и пересылает совпадения.
+                </div>
+            </div>
+            <div class="table__row table__row--wide">
+                <div class="table__cell table__cell--num">3</div>
+                <div class="table__cell">Если совпадения найдены, бот их пересылает и обновляет отметку.</div>
+                <div class="table__cell">
+                    Так сообщения не теряются.
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<div class="space"></div>
+
+<div class="card">
+    <div class="card__title">Если что-то не работает</div>
+    <div class="table">
+        <div class="table__row table__row--wide">
+            <div class="table__cell table__cell--num">Симптом</div>
+            <div class="table__cell">Возможная причина</div>
+            <div class="table__cell">Что сделать</div>
+        </div>
+        <div class="table__row table__row--wide">
+            <div class="table__cell table__cell--num">Connected = NO</div>
+            <div class="table__cell">Нет подключения к Telegram или неверная сессия</div>
+            <div class="table__cell">Проверьте, что сессия действительна, и нажмите Restart.</div>
+        </div>
+        <div class="table__row table__row--wide">
+            <div class="table__cell table__cell--num">Сообщения не пересылаются</div>
+            <div class="table__cell">Нет совпадений по ключевым словам</div>
+            <div class="table__cell">Проверьте список Keywords и попробуйте тестовый пост.</div>
+        </div>
+        <div class="table__row table__row--wide">
+            <div class="table__cell table__cell--num">Не ясно, что происходит</div>
+            <div class="table__cell">Ошибка внутри приложения</div>
+            <div class="table__cell">Откройте Logs и посмотрите последние записи.</div>
+        </div>
+    </div>
+</div>
+{% endblock %}
