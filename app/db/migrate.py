@@ -14,33 +14,93 @@ class Migration:
 MIGRATIONS_DIR = Path("/app/app/db/migrations")
 
 
-async def ensure_migrations_table(conn: asyncpg.Connection) -> None:
-    await conn.execute(
-        """
-        CREATE TABLE IF NOT EXISTS schema_migrations (
-                                                         filename TEXT PRIMARY KEY,
-                                                         applied_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
-            );
-        """
-    )
-
-
 async def load_migrations() -> list[Migration]:
     if not MIGRATIONS_DIR.is_dir():
         raise RuntimeError(f"Migrations dir not found: {MIGRATIONS_DIR}")
 
     files = sorted([p for p in MIGRATIONS_DIR.glob("*.sql") if p.is_file()])
-    migrations: list[Migration] = []
-    for p in files:
-        migrations.append(Migration(filename=p.name, sql=p.read_text(encoding="utf-8")))
-    return migrations
+    return [Migration(filename=p.name, sql=p.read_text(encoding="utf-8")) for p in files]
+
+
+async def table_exists(conn: asyncpg.Connection, table_name: str) -> bool:
+    return bool(
+        await conn.fetchval(
+            """
+            SELECT 1
+            FROM information_schema.tables
+            WHERE table_schema='public' AND table_name=$1
+            """,
+            table_name,
+        )
+    )
+
+
+async def column_exists(conn: asyncpg.Connection, table_name: str, column_name: str) -> bool:
+    return bool(
+        await conn.fetchval(
+            """
+            SELECT 1
+            FROM information_schema.columns
+            WHERE table_schema='public' AND table_name=$1 AND column_name=$2
+            """,
+            table_name,
+            column_name,
+        )
+    )
+
+
+async def ensure_schema_migrations(conn: asyncpg.Connection) -> None:
+    """
+    Гарантирует, что существует таблица schema_migrations с колонкой filename.
+    Если раньше таблица была создана в другом формате — приводим к нужному.
+    """
+    exists = await table_exists(conn, "schema_migrations")
+
+    if not exists:
+        await conn.execute(
+            """
+            CREATE TABLE schema_migrations (
+                                               filename TEXT PRIMARY KEY,
+                                               applied_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
+            );
+            """
+        )
+        return
+
+    has_filename = await column_exists(conn, "schema_migrations", "filename")
+    if has_filename:
+        return
+
+    # Если таблица есть, но не того формата — фиксируем "без сюрпризов":
+    # 1) Переименования колонок не делаем (слишком много вариантов).
+    # 2) Пересоздаём таблицу в правильном виде.
+    # 3) Если init уже применён (по факту наличия таблиц) — помечаем 001_init.sql как applied.
+
+    init_applied = await table_exists(conn, "keywords")
+
+    async with conn.transaction():
+        await conn.execute("DROP TABLE schema_migrations;")
+        await conn.execute(
+            """
+            CREATE TABLE schema_migrations (
+                                               filename TEXT PRIMARY KEY,
+                                               applied_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
+            );
+            """
+        )
+        if init_applied:
+            await conn.execute(
+                "INSERT INTO schema_migrations(filename) VALUES($1) ON CONFLICT DO NOTHING;",
+                "001_init.sql",
+            )
 
 
 async def apply_migrations(database_url: str) -> None:
     conn: asyncpg.Connection | None = None
     try:
         conn = await asyncpg.connect(database_url)
-        await ensure_migrations_table(conn)
+
+        await ensure_schema_migrations(conn)
 
         applied_rows = await conn.fetch("SELECT filename FROM schema_migrations;")
         applied = {r["filename"] for r in applied_rows}
@@ -50,7 +110,6 @@ async def apply_migrations(database_url: str) -> None:
             if m.filename in applied:
                 continue
 
-            # Одна миграция = одна транзакция (явно и предсказуемо)
             async with conn.transaction():
                 await conn.execute(m.sql)
                 await conn.execute(

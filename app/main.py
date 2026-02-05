@@ -1,12 +1,14 @@
 import os
 from datetime import datetime, timezone
 
+import asyncpg
 from fastapi import FastAPI, Request
 from fastapi.responses import HTMLResponse
 from fastapi.staticfiles import StaticFiles
 from fastapi.templating import Jinja2Templates
 
 from app.db.migrate import apply_migrations, get_database_url_from_env
+from app.db.repo import Repo
 
 
 def utc_now_iso() -> str:
@@ -35,13 +37,25 @@ app.mount("/static", StaticFiles(directory=STATIC_DIR), name="static")
 
 @app.on_event("startup")
 async def on_startup() -> None:
-    # Автоприменение SQL-миграций при старте (явно, без Alembic)
     db_url = get_database_url_from_env()
+
     await apply_migrations(db_url)
+
+    pool = await asyncpg.create_pool(dsn=db_url, min_size=1, max_size=10)
+    app.state.db_pool = pool
+    app.state.repo = Repo(pool)
+
+
+@app.on_event("shutdown")
+async def on_shutdown() -> None:
+    pool = getattr(app.state, "db_pool", None)
+    if pool is not None:
+        await pool.close()
 
 
 @app.get("/health")
 async def health() -> dict:
+    # health без реального ping БД (простота). Потом добавим /health/db если надо.
     return {"status": "ok", "time_utc": utc_now_iso()}
 
 
