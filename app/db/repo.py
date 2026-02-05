@@ -282,7 +282,7 @@ class Repo:
             await conn.execute(
                 """
                 INSERT INTO bot_state(id, enabled, restart_requested_at)
-                VALUES (1, false, $1)
+                VALUES (1, true, $1)
                     ON CONFLICT (id)
                 DO UPDATE SET restart_requested_at = EXCLUDED.restart_requested_at;
                 """,

@@ -153,6 +153,12 @@ body {
   background: transparent;
 }
 
+.btn--disabled {
+  opacity: 0.45;
+  cursor: default;
+  pointer-events: none;
+}
+
 .footer {
   border-top: 1px solid var(--border);
   margin-top: 20px;
@@ -161,6 +167,84 @@ body {
 .form {
   display: grid;
   gap: 12px;
+}
+
+.form--inline {
+  grid-template-columns: 1fr auto;
+  align-items: center;
+}
+
+.toolbar {
+  display: grid;
+  gap: 12px;
+}
+
+.toolbar__form {
+  display: grid;
+  grid-template-columns: 1fr auto;
+  gap: 10px;
+  align-items: center;
+}
+
+.btn--icon {
+  width: 40px;
+  height: 40px;
+  padding: 0;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 18px;
+}
+
+.table {
+  display: grid;
+  gap: 6px;
+}
+
+.table__row {
+  display: grid;
+  grid-template-columns: 56px 1fr 120px;
+  gap: 12px;
+  align-items: center;
+  padding: 10px 12px;
+  border: 1px solid var(--border);
+  border-radius: 12px;
+  background: rgba(255,255,255,0.02);
+}
+
+.table__row--head {
+  background: transparent;
+  border-style: dashed;
+  color: var(--muted);
+  font-size: 12px;
+  text-transform: uppercase;
+  letter-spacing: 0.6px;
+}
+
+.table__cell {
+  word-break: break-word;
+}
+
+.table__cell--num {
+  color: var(--muted);
+}
+
+.table__cell--actions {
+  text-align: right;
+}
+
+.pagination {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+}
+
+@media (min-width: 860px) {
+  .toolbar {
+    grid-template-columns: 1fr 1fr;
+    gap: 16px;
+  }
 }
 
 .label__title {

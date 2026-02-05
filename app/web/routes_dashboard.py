@@ -37,6 +37,7 @@ async def dashboard(request: Request) -> HTMLResponse:
         "dashboard.html",
         {
             "request": request,
+            "nav_active": "dashboard",
             "target_channel": os.getenv("TARGET_CHANNEL", ""),
             "session_name": os.getenv("SESSION_NAME", ""),
             "connected": "YES" if app_status.connected else "NO",

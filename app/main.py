@@ -12,6 +12,7 @@ from app.db.repo import Repo
 from app.web.routes_auth import router as auth_router
 from app.web.routes_controls import router as controls_router
 from app.web.routes_dashboard import router as dashboard_router
+from app.web.routes_keywords import router as keywords_router
 
 
 def utc_now_iso() -> str:
@@ -41,6 +42,7 @@ app.mount("/static", StaticFiles(directory=STATIC_DIR), name="static")
 app.include_router(auth_router)
 app.include_router(dashboard_router)
 app.include_router(controls_router)
+app.include_router(keywords_router)
 
 
 @app.on_event("startup")
