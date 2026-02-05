@@ -327,7 +327,8 @@ class Repo:
                 INSERT INTO app_status(id, connected, last_error, last_event_time, last_event_message)
                 VALUES (1, $1, NULL, NULL, NULL)
                     ON CONFLICT (id)
-                DO UPDATE SET connected = EXCLUDED.connected;
+                DO UPDATE SET connected = EXCLUDED.connected, 
+                                           last_error = NULL;
                 """,
                 connected,
             )

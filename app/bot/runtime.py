@@ -5,7 +5,7 @@ import os
 import re
 from datetime import datetime
 
-from telethon import TelegramClient
+from telethon import TelegramClient, events
 from telethon.errors import RPCError
 
 from app.db.repo import Repo
@@ -23,6 +23,9 @@ class BotRuntime:
         self._target_chat_id: int | None = None
         self._target_title: str | None = None
 
+        # Live handlers lifecycle
+        self._handlers_installed: bool = False
+
         # Local in-memory cache to avoid spamming DB with the same status updates.
         self._connected_cache: bool | None = None
         self._last_error_cache: str | None = None
@@ -37,32 +40,21 @@ class BotRuntime:
             await self._task
 
     def get_client(self) -> TelegramClient | None:
-        """
-        Returns Telethon client when created.
-        Used by next steps (live handlers / backfill).
-        """
+        """Returns Telethon client when created."""
         return self._client
 
     def get_target_chat_id(self) -> int | None:
-        """
-        Returns resolved target chat id when connected.
-        """
+        """Returns resolved target chat id when connected."""
         return self._target_chat_id
 
     def is_target_chat(self, chat_id: int | None) -> bool:
-        """
-        Prevent infinite forwarding loops.
-        Any event/message from target channel must be ignored.
-        """
+        """Prevent infinite forwarding loops."""
         if chat_id is None or self._target_chat_id is None:
             return False
         return int(chat_id) == int(self._target_chat_id)
 
     def should_monitor_chat(self, chat_id: int | None) -> bool:
-        """
-        Centralized rule: never monitor the target channel.
-        Future rules can be added here (blacklist, etc.).
-        """
+        """Centralized rule: never monitor the target channel."""
         if chat_id is None:
             return False
         if self.is_target_chat(chat_id):
@@ -70,15 +62,7 @@ class BotRuntime:
         return True
 
     async def _run_loop(self) -> None:
-        """
-        Main bot loop.
-        - Polls bot_state from DB
-        - Handles enable/disable
-        - Handles soft restart via restart_requested_at
-        - Manages Telethon client lifecycle (connect / disconnect)
-        """
         last_restart_seen: datetime | None = None
-
         await self._repo.app_status_set_event("Bot runtime started")
 
         try:
@@ -116,15 +100,7 @@ class BotRuntime:
             await self._set_connected(False)
             await self._repo.app_status_set_event("Bot runtime stopped")
 
-    # ----------------------------
-    # Telethon bootstrap
-    # ----------------------------
     async def _ensure_connected(self) -> bool:
-        """
-        Creates and connects Telethon client using mounted .session file.
-        Resolves target channel by title (TARGET_CHANNEL env).
-        Updates app_status.connected and last_error accordingly.
-        """
         try:
             api_id_raw = os.environ.get("TELEGRAM_API_ID", "").strip()
             api_hash = os.environ.get("TELEGRAM_API_HASH", "").strip()
@@ -157,14 +133,13 @@ class BotRuntime:
             if not self._client.is_connected():
                 await self._client.connect()
 
-            # Session must be authorized (created by tools/login.py).
             if not await self._client.is_user_authorized():
                 await self._set_error("Telegram session is not authorized. Re-create .session using tools/login.py")
                 await self._disconnect_client()
                 await self._set_connected(False)
                 return False
 
-            # Resolve target channel id by title (private channels are resolvable only from dialogs).
+            # Resolve target channel id by title (dialogs scan).
             resolved = await self._resolve_target_channel_id(target_title)
             if resolved is None:
                 await self._set_connected(False)
@@ -174,19 +149,23 @@ class BotRuntime:
             self._target_chat_id = resolved
             self._target_title = target_title
 
+            # Install live monitoring handlers once per client lifecycle.
+            if not self._handlers_installed:
+                self._install_live_handlers()
+                self._handlers_installed = True
+                await self._repo.app_status_set_event("Live monitoring enabled")
+
             await self._set_connected(True)
             await self._set_error(None)
             return True
 
         except (OSError, ValueError) as exc:
-            # OSError: filesystem / socket issues, ValueError: invalid env values
             await self._set_error(str(exc))
             await self._set_connected(False)
             await self._disconnect_client()
             return False
 
         except RPCError as exc:
-            # Telegram RPC-level errors (auth revoked, flood wait, etc.)
             await self._set_error(f"Telegram RPC error: {exc.__class__.__name__}: {exc}")
             await self._set_connected(False)
             await self._disconnect_client()
@@ -198,11 +177,43 @@ class BotRuntime:
             await self._disconnect_client()
             return False
 
+    def _install_live_handlers(self) -> None:
+        """
+        Live monitoring for all groups and channels the account is subscribed to.
+        IMPORTANT: Do not call get_chat()/get_entity() here (hot path).
+        """
+        if self._client is None:
+            return
+
+        async def _on_new_message(event: events.NewMessage.Event) -> None:
+            try:
+                chat_id = int(event.chat_id) if event.chat_id is not None else None
+
+                # Monitor only groups/channels, ignore private dialogs.
+                if not (event.is_channel or event.is_group):
+                    return
+
+                # Never react to messages from target channel (loop protection).
+                if not self.should_monitor_chat(chat_id):
+                    return
+
+                # We only record the last event for UI (no success logs).
+                msg_id = int(getattr(event.message, "id", 0) or 0)
+                text = (getattr(event.message, "message", "") or "").strip()
+                if len(text) > 120:
+                    text = text[:120] + "..."
+
+                await self._repo.app_status_set_event(
+                    f"New message: chat_id={chat_id} message_id={msg_id} text={text}"
+                )
+
+            except Exception as exc:
+                await self._repo.app_status_set_error(str(exc))
+                await self._repo.event_error_add(str(exc))
+
+        self._client.add_event_handler(_on_new_message, events.NewMessage())
+
     async def _resolve_target_channel_id(self, target_title: str) -> int | None:
-        """
-        Resolves target chat id ONLY by dialog title.
-        This works for private channels if the account is already a member (dialog exists).
-        """
         if self._client is None:
             await self._set_error("Internal error: Telethon client not initialized")
             return None
@@ -214,10 +225,8 @@ class BotRuntime:
             name = (dialog.name or "").strip()
             if not name:
                 continue
-
             if self._normalize_title(name) != wanted:
                 continue
-
             matches.append(int(dialog.id))
 
         if not matches:
@@ -239,12 +248,6 @@ class BotRuntime:
 
     @staticmethod
     def _normalize_title(value: str) -> str:
-        """
-        Normalization rules:
-        - case-insensitive
-        - treat 'ё' as 'е'
-        - collapse multiple spaces
-        """
         v = value.strip().lower().replace("ё", "е")
         v = re.sub(r"\s+", " ", v)
         return v
@@ -253,6 +256,7 @@ class BotRuntime:
         # Reset caches related to Telegram session
         self._target_chat_id = None
         self._target_title = None
+        self._handlers_installed = False
 
         if self._client is None:
             return
@@ -260,14 +264,10 @@ class BotRuntime:
             if self._client.is_connected():
                 await asyncio.wait_for(self._client.disconnect(), timeout=10)
         except Exception:
-            # Ignore shutdown errors; status will be reported on the next connect attempt anyway.
             pass
         finally:
             self._client = None
 
-    # ----------------------------
-    # Status helpers (DB writes throttled)
-    # ----------------------------
     async def _set_connected(self, connected: bool) -> None:
         if self._connected_cache is connected:
             return
