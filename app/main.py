@@ -6,19 +6,38 @@ from fastapi.responses import HTMLResponse
 from fastapi.staticfiles import StaticFiles
 from fastapi.templating import Jinja2Templates
 
+from app.db.migrate import apply_migrations, get_database_url_from_env
+
 
 def utc_now_iso() -> str:
     return datetime.now(timezone.utc).isoformat()
 
 
+def require_dir(path: str) -> None:
+    if not os.path.isdir(path):
+        raise RuntimeError(f"Required directory not found: {path}")
+
+
 app = FastAPI(title="tg-keyword-watcher")
 
-BASE_DIR = os.path.dirname(os.path.abspath(__file__))
-TEMPLATES_DIR = os.path.join(BASE_DIR, "web", "templates")
-STATIC_DIR = os.path.join(BASE_DIR, "web", "static")
+PROJECT_ROOT = "/app"
+APP_DIR = os.path.join(PROJECT_ROOT, "app")
+
+TEMPLATES_DIR = os.path.join(APP_DIR, "web", "templates")
+STATIC_DIR = os.path.join(APP_DIR, "web", "static")
+
+require_dir(TEMPLATES_DIR)
+require_dir(STATIC_DIR)
 
 templates = Jinja2Templates(directory=TEMPLATES_DIR)
 app.mount("/static", StaticFiles(directory=STATIC_DIR), name="static")
+
+
+@app.on_event("startup")
+async def on_startup() -> None:
+    # Автоприменение SQL-миграций при старте (явно, без Alembic)
+    db_url = get_database_url_from_env()
+    await apply_migrations(db_url)
 
 
 @app.get("/health")
@@ -28,7 +47,6 @@ async def health() -> dict:
 
 @app.get("/", response_class=HTMLResponse)
 async def index(request: Request) -> HTMLResponse:
-    # Пустой UI-заглушка (в T2 будет нормальная админка)
     ctx = {
         "request": request,
         "target_channel": os.getenv("TARGET_CHANNEL", ""),
