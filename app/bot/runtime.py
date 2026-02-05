@@ -199,6 +199,9 @@ class BotRuntime:
             return
 
         async def _on_new_message(event: events.NewMessage.Event) -> None:
+            claimed = False
+            msg_id = 0
+            chat_id = None
             try:
                 chat_id = int(event.chat_id) if event.chat_id is not None else None
 
@@ -212,11 +215,34 @@ class BotRuntime:
                 if len(text) > 120:
                     text = text[:120] + "..."
 
+                keywords = await self._repo.keyword_all()
+                matched = self._find_keywords(text, keywords)
+
+                if not matched:
+                    return
+
+                pending_timeout = int(os.environ.get("FORWARD_PENDING_TIMEOUT_SECONDS", "300").strip() or "300")
+                claimed = await self._repo.forwarded_claim(chat_id, msg_id, pending_timeout)
+                if not claimed:
+                    return
+
+                prefix = f"Matched keywords: {', '.join(matched)} | "
+
                 await self._repo.app_status_set_event(
-                    f"New message: chat_id={chat_id} message_id={msg_id} text={text}"
+                    f"{prefix}New message: chat_id={chat_id} message_id={msg_id} text={text}"
                 )
 
+                if self._client is None or self._target_chat_id is None:
+                    raise RuntimeError("Target channel is not resolved")
+
+                notify_text = f"В посте найдены следующие ключевые слова: {', '.join(matched)}"
+                await self._client.send_message(self._target_chat_id, notify_text)
+                await self._client.forward_messages(self._target_chat_id, event.message)
+                await self._repo.forwarded_mark_sent(chat_id, msg_id)
+
             except Exception as exc:
+                if claimed and chat_id is not None and msg_id:
+                    await self._repo.forwarded_mark_failed(chat_id, msg_id, str(exc))
                 await self._repo.app_status_set_error(str(exc))
                 await self._repo.event_error_add(str(exc))
 
@@ -259,6 +285,25 @@ class BotRuntime:
         v = value.strip().lower().replace("ё", "е")
         v = re.sub(r"\s+", " ", v)
         return v
+
+    @staticmethod
+    def _normalize_text(value: str) -> str:
+        v = value.strip().lower().replace("ё", "е")
+        v = re.sub(r"\s+", " ", v)
+        return v
+
+    def _find_keywords(self, text: str, keywords: list[str]) -> list[str]:
+        if not text or not keywords:
+            return []
+        normalized_text = self._normalize_text(text)
+        matched: list[str] = []
+        for keyword in keywords:
+            normalized_keyword = self._normalize_text(keyword)
+            if not normalized_keyword:
+                continue
+            if normalized_keyword in normalized_text:
+                matched.append(keyword)
+        return matched
 
     async def _disconnect_client(self) -> None:
         # Reset caches related to Telegram session

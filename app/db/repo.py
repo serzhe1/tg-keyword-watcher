@@ -32,16 +32,16 @@ class Repo:
         async with self._pool.acquire() as conn:
             await conn.execute(
                 """
-                INSERT INTO keywords(word)
+                INSERT INTO keywords(keyword)
                 VALUES ($1)
-                    ON CONFLICT (word) DO NOTHING;
+                    ON CONFLICT (keyword) DO NOTHING;
                 """,
                 word,
             )
 
     async def keyword_delete(self, word: str) -> None:
         async with self._pool.acquire() as conn:
-            await conn.execute("DELETE FROM keywords WHERE word = $1;", word)
+            await conn.execute("DELETE FROM keywords WHERE keyword = $1;", word)
 
     async def keyword_list(self, q: str | None, limit: int, offset: int) -> tuple[list[str], int]:
         q = (q or "").strip()
@@ -49,10 +49,10 @@ class Repo:
             if q:
                 rows = await conn.fetch(
                     """
-                    SELECT word
+                    SELECT keyword
                     FROM keywords
-                    WHERE word ILIKE '%' || $1 || '%'
-                    ORDER BY word ASC
+                    WHERE keyword ILIKE '%' || $1 || '%'
+                    ORDER BY keyword ASC
                         LIMIT $2 OFFSET $3;
                     """,
                     q,
@@ -63,16 +63,16 @@ class Repo:
                     """
                     SELECT COUNT(*)
                     FROM keywords
-                    WHERE word ILIKE '%' || $1 || '%';
+                    WHERE keyword ILIKE '%' || $1 || '%';
                     """,
                     q,
                 )
             else:
                 rows = await conn.fetch(
                     """
-                    SELECT word
+                    SELECT keyword
                     FROM keywords
-                    ORDER BY word ASC
+                    ORDER BY keyword ASC
                         LIMIT $1 OFFSET $2;
                     """,
                     limit,
@@ -80,12 +80,12 @@ class Repo:
                 )
                 total = await conn.fetchval("SELECT COUNT(*) FROM keywords;")
 
-        return [r["word"] for r in rows], int(total)
+        return [r["keyword"] for r in rows], int(total)
 
     async def keyword_all(self) -> list[str]:
         async with self._pool.acquire() as conn:
-            rows = await conn.fetch("SELECT word FROM keywords ORDER BY word ASC;")
-            return [r["word"] for r in rows]
+            rows = await conn.fetch("SELECT keyword FROM keywords ORDER BY keyword ASC;")
+            return [r["keyword"] for r in rows]
 
     # ----------------------------
     # Forwarded messages (idempotency skeleton; will be used later)
