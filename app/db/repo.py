@@ -190,7 +190,7 @@ class Repo:
                 """
                 SELECT last_message_id, last_message_date
                 FROM channel_checkpoint
-                WHERE source_chat_id = $1;
+                WHERE channel_id = $1;
                 """,
                 source_chat_id,
             )
@@ -202,9 +202,9 @@ class Repo:
         async with self._pool.acquire() as conn:
             await conn.execute(
                 """
-                INSERT INTO channel_checkpoint(source_chat_id, last_message_id, last_message_date, updated_at)
+                INSERT INTO channel_checkpoint(channel_id, last_message_id, last_message_date, updated_at)
                 VALUES ($1, $2, $3, $4)
-                    ON CONFLICT (source_chat_id)
+                    ON CONFLICT (channel_id)
                 DO UPDATE SET
                     last_message_id = EXCLUDED.last_message_id,
                                            last_message_date = EXCLUDED.last_message_date,
@@ -223,8 +223,8 @@ class Repo:
         async with self._pool.acquire() as conn:
             await conn.execute(
                 """
-                INSERT INTO event_log(level, message, created_at)
-                VALUES ('error', $1, $2);
+                INSERT INTO event_log(status, level, message, created_at)
+                VALUES ('error', 'error', $1, $2);
                 """,
                 message,
                 datetime.now(timezone.utc),

@@ -26,6 +26,7 @@ class BotRuntime:
         # Live handlers lifecycle
         self._handlers_installed: bool = False
         self._checkpoints_initialized: bool = False
+        self._backfill_completed: bool = False
 
         # Local in-memory cache to avoid spamming DB with the same status updates.
         self._connected_cache: bool | None = None
@@ -168,6 +169,11 @@ class BotRuntime:
                 await self._initialize_checkpoints()
                 self._checkpoints_initialized = True
 
+            # Backfill messages after checkpoint on each (re)connect.
+            if not self._backfill_completed:
+                await self._backfill_after_checkpoint()
+                self._backfill_completed = True
+
             # Install live monitoring handlers once per client lifecycle.
             if not self._handlers_installed:
                 self._install_live_handlers()
@@ -205,9 +211,6 @@ class BotRuntime:
             return
 
         async def _on_new_message(event: events.NewMessage.Event) -> None:
-            claimed = False
-            msg_id = 0
-            chat_id = None
             try:
                 chat_id = int(event.chat_id) if event.chat_id is not None else None
 
@@ -215,40 +218,8 @@ class BotRuntime:
                 if not self.should_monitor_chat(chat_id):
                     return
 
-                # We only record the last event for UI (no success logs).
-                msg_id = int(getattr(event.message, "id", 0) or 0)
-                text = (getattr(event.message, "message", "") or "").strip()
-                if len(text) > 120:
-                    text = text[:120] + "..."
-
-                keywords = await self._repo.keyword_all()
-                matched = self._find_keywords(text, keywords)
-
-                if not matched:
-                    return
-
-                pending_timeout = int(os.environ.get("FORWARD_PENDING_TIMEOUT_SECONDS", "300").strip() or "300")
-                claimed = await self._repo.forwarded_claim(chat_id, msg_id, pending_timeout)
-                if not claimed:
-                    return
-
-                prefix = f"Matched keywords: {', '.join(matched)} | "
-
-                await self._repo.app_status_set_event(
-                    f"{prefix}New message: chat_id={chat_id} message_id={msg_id} text={text}"
-                )
-
-                if self._client is None or self._target_chat_id is None:
-                    raise RuntimeError("Target channel is not resolved")
-
-                notify_text = f"В посте найдены следующие ключевые слова: {', '.join(matched)}"
-                await self._client.send_message(self._target_chat_id, notify_text)
-                await self._client.forward_messages(self._target_chat_id, event.message)
-                await self._repo.forwarded_mark_sent(chat_id, msg_id)
-
+                await self._process_message(chat_id, event.message, is_backfill=False)
             except Exception as exc:
-                if claimed and chat_id is not None and msg_id:
-                    await self._repo.forwarded_mark_failed(chat_id, msg_id, str(exc))
                 await self._repo.app_status_set_error(str(exc))
                 await self._repo.event_error_add(str(exc))
 
@@ -324,6 +295,79 @@ class BotRuntime:
 
         await self._repo.app_status_set_event("Channel checkpoints initialized")
 
+    async def _backfill_after_checkpoint(self) -> None:
+        if self._client is None:
+            return
+
+        page_size = int(os.environ.get("BACKFILL_PAGE_SIZE", "100").strip() or "100")
+        await self._repo.app_status_set_event("Backfill started")
+
+        async for dialog in self._client.iter_dialogs():
+            try:
+                if not (dialog.is_channel or dialog.is_group):
+                    continue
+
+                chat_id = int(dialog.id)
+                if not self.should_monitor_chat(chat_id):
+                    continue
+
+                last_id, _ = await self._repo.checkpoint_get(chat_id)
+                if last_id is None:
+                    continue
+
+                async for msg in self._client.iter_messages(
+                    dialog.entity,
+                    min_id=int(last_id),
+                    reverse=True,
+                    limit=None,
+                    batch_size=page_size,
+                ):
+                    await self._process_message(chat_id, msg, is_backfill=True)
+                    await self._repo.checkpoint_upsert(chat_id, int(msg.id), msg.date)
+            except Exception as exc:
+                await self._repo.app_status_set_error(str(exc))
+                await self._repo.event_error_add(str(exc))
+
+        await self._repo.app_status_set_event("Backfill finished")
+
+    async def _process_message(self, chat_id: int, message: object, is_backfill: bool) -> None:
+        claimed = False
+        msg_id = 0
+        try:
+            msg_id = int(getattr(message, "id", 0) or 0)
+            text = (getattr(message, "message", "") or "").strip()
+            if len(text) > 120:
+                text = text[:120] + "..."
+
+            keywords = await self._repo.keyword_all()
+            matched = self._find_keywords(text, keywords)
+
+            if not matched:
+                return
+
+            pending_timeout = int(os.environ.get("FORWARD_PENDING_TIMEOUT_SECONDS", "300").strip() or "300")
+            claimed = await self._repo.forwarded_claim(chat_id, msg_id, pending_timeout)
+            if not claimed:
+                return
+
+            prefix = f"Matched keywords: {', '.join(matched)} | "
+            source = "backfill" if is_backfill else "live"
+            await self._repo.app_status_set_event(
+                f"{prefix}{source} message: chat_id={chat_id} message_id={msg_id} text={text}"
+            )
+
+            if self._client is None or self._target_chat_id is None:
+                raise RuntimeError("Target channel is not resolved")
+
+            notify_text = f"В посте найдены следующие ключевые слова: {', '.join(matched)}"
+            await self._client.send_message(self._target_chat_id, notify_text)
+            await self._client.forward_messages(self._target_chat_id, message)
+            await self._repo.forwarded_mark_sent(chat_id, msg_id)
+        except Exception as exc:
+            if claimed and msg_id:
+                await self._repo.forwarded_mark_failed(chat_id, msg_id, str(exc))
+            raise
+
     @staticmethod
     def _normalize_title(value: str) -> str:
         v = value.strip().lower().replace("ё", "е")
@@ -355,6 +399,7 @@ class BotRuntime:
         self._target_title = None
         self._handlers_installed = False
         self._checkpoints_initialized = False
+        self._backfill_completed = False
 
         if self._client is None:
             return

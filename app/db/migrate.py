@@ -11,7 +11,7 @@ class Migration:
     sql: str
 
 
-MIGRATIONS_DIR = Path("/app/app/db/migrations")
+MIGRATIONS_DIR = (Path(__file__).resolve().parent / "migrations").resolve()
 
 
 async def load_migrations() -> list[Migration]:
