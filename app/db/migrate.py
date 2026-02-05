@@ -51,8 +51,10 @@ async def column_exists(conn: asyncpg.Connection, table_name: str, column_name: 
 
 async def ensure_schema_migrations(conn: asyncpg.Connection) -> None:
     """
-    Гарантирует, что существует таблица schema_migrations с колонкой filename.
-    Если раньше таблица была создана в другом формате — приводим к нужному.
+    Ensures schema_migrations exists and has a 'filename' column.
+    If schema_migrations exists in an unexpected format, it is recreated.
+    If 'keywords' table already exists, we assume 001_init.sql was effectively applied
+    and mark it as applied to avoid re-running it.
     """
     exists = await table_exists(conn, "schema_migrations")
 
@@ -70,11 +72,6 @@ async def ensure_schema_migrations(conn: asyncpg.Connection) -> None:
     has_filename = await column_exists(conn, "schema_migrations", "filename")
     if has_filename:
         return
-
-    # Если таблица есть, но не того формата — фиксируем "без сюрпризов":
-    # 1) Переименования колонок не делаем (слишком много вариантов).
-    # 2) Пересоздаём таблицу в правильном виде.
-    # 3) Если init уже применён (по факту наличия таблиц) — помечаем 001_init.sql как applied.
 
     init_applied = await table_exists(conn, "keywords")
 

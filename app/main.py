@@ -39,8 +39,10 @@ app.mount("/static", StaticFiles(directory=STATIC_DIR), name="static")
 async def on_startup() -> None:
     db_url = get_database_url_from_env()
 
+    # 1) Apply SQL migrations on startup (explicit, no Alembic).
     await apply_migrations(db_url)
 
+    # 2) Create DB pool and repository.
     pool = await asyncpg.create_pool(dsn=db_url, min_size=1, max_size=10)
     app.state.db_pool = pool
     app.state.repo = Repo(pool)
@@ -55,7 +57,6 @@ async def on_shutdown() -> None:
 
 @app.get("/health")
 async def health() -> dict:
-    # health без реального ping БД (простота). Потом добавим /health/db если надо.
     return {"status": "ok", "time_utc": utc_now_iso()}
 
 

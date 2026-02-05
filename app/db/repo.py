@@ -11,8 +11,7 @@ def utc_now() -> datetime:
 
 
 def normalize_keyword(s: str) -> str:
-    # UI/логика поиска будет без учета регистра + ё==е
-    # Нормализуем при вставке/поиске, чтобы поведение было предсказуемым.
+    # Normalize for case-insensitive matching and treat "ё" == "е"
     s = s.strip()
     s = s.replace("Ё", "Е").replace("ё", "е")
     return s.lower()
@@ -59,7 +58,8 @@ class Repo:
             offset: int,
     ) -> tuple[list[KeywordRow], int]:
         """
-        Возвращает (items, total). Поиск по подстроке, без учета регистра + ё==е.
+        Returns (items, total).
+        Search is substring-based, case-insensitive, and treats "ё" == "е".
         """
         limit = max(1, min(limit, 200))
         offset = max(0, offset)
@@ -105,8 +105,8 @@ class Repo:
 
     async def keywords_add(self, keyword: str) -> bool:
         """
-        True если добавили, False если уже было (idempotent add).
-        Храним как ввели (keyword), но уникальность обеспечиваем через нормализованную вставку-guard.
+        Returns True if inserted, False if already exists (idempotent add).
+        Duplicate check is done in normalized form so "еж" and "ёж" are treated as the same.
         """
         kw = keyword.strip()
         if not kw:
@@ -131,7 +131,7 @@ class Repo:
     async def keywords_delete(self, keyword_id: int) -> bool:
         async with self._pool.acquire() as conn:
             res = await conn.execute("DELETE FROM keywords WHERE id=$1;", int(keyword_id))
-        # res: "DELETE <n>"
+        # asyncpg returns "DELETE <n>"
         return res.endswith("1")
 
     async def keywords_all_normalized(self) -> list[str]:
@@ -139,7 +139,7 @@ class Repo:
             rows = await conn.fetch("SELECT keyword FROM keywords ORDER BY id ASC;")
         return [normalize_keyword(r["keyword"]) for r in rows]
 
-    # ---------- forwarded_messages: anti-duplicate / pending-retry ----------
+    # ---------- forwarded_messages: idempotency / pending-retry ----------
 
     async def forwarded_claim(
             self,
@@ -148,13 +148,14 @@ class Repo:
             retry_after_seconds: int,
     ) -> bool:
         """
-        Атомарный claim:
-        - создаёт запись pending, если её не было
-        - или "забирает" pending, если claim просрочен (retry)
-        - НЕ даёт повторно обработать sent
-        Возвращает True, если можно обрабатывать сейчас (claimed), иначе False.
+        Atomic claim for processing:
+        - inserts a pending row if it doesn't exist
+        - re-claims pending/failed if claim is older than retry_after_seconds
+        - never allows re-processing if status == sent
+        Returns True if the caller should process now, otherwise False.
         """
         retry_after_seconds = max(1, retry_after_seconds)
+
         async with self._pool.acquire() as conn:
             async with conn.transaction():
                 row = await conn.fetchrow(
@@ -187,7 +188,7 @@ class Repo:
                 if status == "sent":
                     return False
 
-                # pending/failed: разрешаем retry если claim устарел
+                # Allow retry if claim is missing or expired
                 if claimed_at is None or (now - claimed_at) >= timedelta(seconds=retry_after_seconds):
                     await conn.execute(
                         """
@@ -382,12 +383,6 @@ class Repo:
 
         async with self._pool.acquire() as conn:
             async with conn.transaction():
-                deleted_logs = await conn.fetchval(
-                    "DELETE FROM event_log WHERE created_at < NOW() - ($1::text || ' days')::interval RETURNING 1;",
-                    str(event_log_days),
-                )
-                # fetchval with RETURNING 1 вернет 1 или None; нам нужно количество → делаем иначе
-                # Поэтому считаем аккуратно через rowcount:
                 res1 = await conn.execute(
                     "DELETE FROM event_log WHERE created_at < NOW() - ($1::text || ' days')::interval;",
                     str(event_log_days),
@@ -398,7 +393,7 @@ class Repo:
                 )
 
         def parse_count(res: str) -> int:
-            # "DELETE <n>"
+            # asyncpg returns "DELETE <n>"
             try:
                 return int(res.split()[-1])
             except Exception:
