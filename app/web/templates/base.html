@@ -1,5 +1,5 @@
 <!doctype html>
-<html lang="en">
+<html lang="{{ lang }}">
 <head>
     <meta charset="utf-8" />
     <meta name="viewport" content="width=device-width,initial-scale=1" />
@@ -11,17 +11,23 @@
     <div class="container topbar__row">
         <div class="brand">tg-keyword-watcher</div>
         <nav class="nav">
-            <a class="nav__link {% if nav_active=='dashboard' %}nav__link--active{% endif %}" href="/">Dashboard</a>
+            <a class="nav__link {% if nav_active=='dashboard' %}nav__link--active{% endif %}" href="/">{{ t("nav.dashboard", lang) }}</a>
             <span class="nav__sep">·</span>
-            <a class="nav__link {% if nav_active=='keywords' %}nav__link--active{% endif %}" href="/keywords">Keywords</a>
+            <a class="nav__link {% if nav_active=='keywords' %}nav__link--active{% endif %}" href="/keywords">{{ t("nav.keywords", lang) }}</a>
             <span class="nav__sep">·</span>
-            <a class="nav__link {% if nav_active=='logs' %}nav__link--active{% endif %}" href="/logs">Logs</a>
+            <a class="nav__link {% if nav_active=='logs' %}nav__link--active{% endif %}" href="/logs">{{ t("nav.logs", lang) }}</a>
             <span class="nav__sep">·</span>
-            <a class="nav__link {% if nav_active=='docs' %}nav__link--active{% endif %}" href="/docs">Docs</a>
+            <a class="nav__link {% if nav_active=='docs' %}nav__link--active{% endif %}" href="/docs">{{ t("nav.docs", lang) }}</a>
         </nav>
 
+        <div class="lang-switch">
+            <a class="lang-switch__link {% if lang=='ru' %}lang-switch__link--active{% endif %}" href="{{ lang_urls['ru'] }}">{{ t("lang.ru", lang) }}</a>
+            <span class="lang-switch__sep">/</span>
+            <a class="lang-switch__link {% if lang=='en' %}lang-switch__link--active{% endif %}" href="{{ lang_urls['en'] }}">{{ t("lang.en", lang) }}</a>
+        </div>
+
         <form method="post" action="/logout" class="logout">
-            <button class="btn btn--ghost" type="submit">Logout</button>
+            <button class="btn btn--ghost" type="submit">{{ t("nav.logout", lang) }}</button>
         </form>
     </div>
 </header>

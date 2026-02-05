@@ -4,6 +4,7 @@ from fastapi import APIRouter, Request
 from fastapi.responses import HTMLResponse
 
 from app.web.deps import RedirectToLogin, require_auth
+from app.web.i18n import apply_lang_cookie, build_lang_urls, resolve_lang, t
 
 
 router = APIRouter()
@@ -26,6 +27,7 @@ async def logs_page(request: Request) -> HTMLResponse:
 
         return login_redirect(next_path="/logs")
 
+    lang, set_cookie = resolve_lang(request)
     repo = request.app.state.repo
     rows = await repo.event_error_latest(limit=100)
     logs = [
@@ -39,11 +41,16 @@ async def logs_page(request: Request) -> HTMLResponse:
 
     from app.main import templates  # noqa: WPS433
 
-    return templates.TemplateResponse(
+    resp = templates.TemplateResponse(
         "logs.html",
         {
             "request": request,
             "nav_active": "logs",
+            "lang": lang,
+            "lang_urls": build_lang_urls(request),
+            "t": t,
             "logs": logs,
         },
     )
+    apply_lang_cookie(resp, lang, set_cookie)
+    return resp

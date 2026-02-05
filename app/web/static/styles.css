@@ -68,6 +68,31 @@ body {
 
 .nav__sep { opacity: 0.4; }
 
+.lang-switch {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  margin-left: 8px;
+}
+
+.lang-switch__link {
+  color: var(--text);
+  text-decoration: none;
+  opacity: 0.7;
+  font-size: 12px;
+  letter-spacing: 0.4px;
+}
+
+.lang-switch__link--active {
+  opacity: 1;
+  font-weight: 600;
+}
+
+.lang-switch__sep {
+  opacity: 0.4;
+  font-size: 12px;
+}
+
 .h1 {
   font-size: 22px;
   margin: 16px 0;
@@ -83,6 +108,13 @@ body {
 .card--narrow {
   max-width: 420px;
   margin: 40px auto;
+}
+
+.login-top {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
 }
 
 .card__title {

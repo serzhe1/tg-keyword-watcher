@@ -1,21 +1,21 @@
 {% extends "base.html" %}
-{% block title %}Logs · tg-keyword-watcher{% endblock %}
+{% block title %}{{ t("logs.title", lang) }} · tg-keyword-watcher{% endblock %}
 
 {% block content %}
-<h1 class="h1">Logs</h1>
+<h1 class="h1">{{ t("logs.title", lang) }}</h1>
 
 <div class="card">
-    <div class="card__title">Latest errors</div>
-    <div class="muted small">Showing last 100 records. Messages are truncated.</div>
+    <div class="card__title">{{ t("logs.latest", lang) }}</div>
+    <div class="muted small">{{ t("logs.note", lang) }}</div>
 
     <div class="space"></div>
 
     {% if logs %}
     <div class="table">
         <div class="table__row table__row--head table__row--wide">
-            <div class="table__cell table__cell--num">ID</div>
-            <div class="table__cell">Time (UTC)</div>
-            <div class="table__cell">Message</div>
+            <div class="table__cell table__cell--num">{{ t("logs.table.id", lang) }}</div>
+            <div class="table__cell">{{ t("logs.table.time", lang) }}</div>
+            <div class="table__cell">{{ t("logs.table.message", lang) }}</div>
         </div>
         {% for row in logs %}
         <div class="table__row table__row--wide">
@@ -26,7 +26,7 @@
         {% endfor %}
     </div>
     {% else %}
-    <div class="muted">No errors yet</div>
+    <div class="muted">{{ t("logs.empty", lang) }}</div>
     {% endif %}
 </div>
 {% endblock %}

@@ -1,13 +1,14 @@
 {% extends "base.html" %}
-{% block title %}Docs · tg-keyword-watcher{% endblock %}
+{% block title %}{{ t("nav.docs", lang) }} · tg-keyword-watcher{% endblock %}
 
 {% block content %}
-<h1 class="h1">Docs</h1>
+<h1 class="h1">{{ t("nav.docs", lang) }}</h1>
 
+{% if lang == "ru" %}
 <div class="card">
     <div class="card__title">Назначение системы</div>
     <div class="muted">
-        Бот отслеживает сообщения в каналах и группах, ищет ключевые слова и пересылает найденные сообщения
+        Бот следит за сообщениями в каналах и группах, ищет ключевые слова и пересылает найденные сообщения
         в целевой канал (TARGET_CHANNEL). Админка нужна, чтобы управлять работой бота и списком ключевых слов.
     </div>
 </div>
@@ -26,7 +27,7 @@
             <div class="table__cell table__cell--num">Dashboard</div>
             <div class="table__cell">Статус бота и кнопки управления</div>
             <div class="table__cell">
-                Проверяйте статус, включайте/выключайте бота, запускайте мягкий рестарт или cleanup.
+                Проверяйте статус, включайте/выключайте бота, запускайте мягкий рестарт или очистку.
             </div>
         </div>
         <div class="table__row table__row--wide">
@@ -196,4 +197,195 @@
         </div>
     </div>
 </div>
+{% else %}
+<div class="card">
+    <div class="card__title">What the system does</div>
+    <div class="muted">
+        The bot monitors messages in channels and groups, searches for keywords, and forwards matching messages
+        to the target channel (TARGET_CHANNEL). The admin UI is used to control the bot and manage keywords.
+    </div>
+</div>
+
+<div class="space"></div>
+
+<div class="card">
+    <div class="card__title">Main sections</div>
+    <div class="table">
+        <div class="table__row table__row--wide">
+            <div class="table__cell table__cell--num">Section</div>
+            <div class="table__cell">What it is</div>
+            <div class="table__cell">How to use</div>
+        </div>
+        <div class="table__row table__row--wide">
+            <div class="table__cell table__cell--num">Dashboard</div>
+            <div class="table__cell">Bot status and control buttons</div>
+            <div class="table__cell">
+                Check status, enable/disable the bot, run a soft restart or cleanup.
+            </div>
+        </div>
+        <div class="table__row table__row--wide">
+            <div class="table__cell table__cell--num">Keywords</div>
+            <div class="table__cell">Keyword list</div>
+            <div class="table__cell">
+                Add or remove words. Search helps find a specific word quickly.
+            </div>
+        </div>
+        <div class="table__row table__row--wide">
+            <div class="table__cell table__cell--num">Logs</div>
+            <div class="table__cell">Error list</div>
+            <div class="table__cell">
+                Review the latest errors. Messages are shortened to avoid unnecessary details.
+            </div>
+        </div>
+    </div>
+</div>
+
+<div class="space"></div>
+
+<div class="card">
+    <div class="card__title">Dashboard statuses</div>
+    <div class="table">
+        <div class="table__row table__row--wide">
+            <div class="table__cell table__cell--num">Field</div>
+            <div class="table__cell">Value</div>
+            <div class="table__cell">What it means</div>
+        </div>
+        <div class="table__row table__row--wide">
+            <div class="table__cell table__cell--num">Connected</div>
+            <div class="table__cell">YES / NO</div>
+            <div class="table__cell">
+                The bot is connected to Telegram and ready to listen.
+            </div>
+        </div>
+        <div class="table__row table__row--wide">
+            <div class="table__cell table__cell--num">Bot enabled</div>
+            <div class="table__cell">YES / NO</div>
+            <div class="table__cell">
+                Whether the bot is allowed to work. If NO, it does not monitor channels.
+            </div>
+        </div>
+        <div class="table__row table__row--wide">
+            <div class="table__cell table__cell--num">Last error</div>
+            <div class="table__cell">Error text</div>
+            <div class="table__cell">
+                The latest error (if any). This is the first place to check when something breaks.
+            </div>
+        </div>
+        <div class="table__row table__row--wide">
+            <div class="table__cell table__cell--num">Last event</div>
+            <div class="table__cell">Event text</div>
+            <div class="table__cell">
+                The last important action: connect, restart, cleanup, etc.
+            </div>
+        </div>
+    </div>
+</div>
+
+<div class="space"></div>
+
+<div class="card">
+    <div class="card__title">What the buttons do</div>
+    <div class="table">
+        <div class="table__row table__row--wide">
+            <div class="table__cell table__cell--num">Button</div>
+            <div class="table__cell">Action</div>
+            <div class="table__cell">When to use</div>
+        </div>
+        <div class="table__row table__row--wide">
+            <div class="table__cell table__cell--num">Enable</div>
+            <div class="table__cell">Turns the bot on</div>
+            <div class="table__cell">
+                Use when you want to resume monitoring after a pause.
+            </div>
+        </div>
+        <div class="table__row table__row--wide">
+            <div class="table__cell table__cell--num">Disable</div>
+            <div class="table__cell">Stops the bot</div>
+            <div class="table__cell">
+                Use when you need to temporarily stop monitoring.
+            </div>
+        </div>
+        <div class="table__row table__row--wide">
+            <div class="table__cell table__cell--num">Restart</div>
+            <div class="table__cell">Soft restart</div>
+            <div class="table__cell">
+                Use when the bot looks stuck or stops catching messages. It reconnects without stopping the server.
+            </div>
+        </div>
+        <div class="table__row table__row--wide">
+            <div class="table__cell table__cell--num">Cleanup</div>
+            <div class="table__cell">Remove old data</div>
+            <div class="table__cell">
+                Deletes logs older than 7 days and service records older than 30 days to save disk space.
+            </div>
+        </div>
+    </div>
+</div>
+
+<div class="space"></div>
+
+<div class="card">
+    <div class="card__title">How Backfill works (catching missed messages)</div>
+    <div class="muted">
+        <div class="space"></div>
+        <div>
+            <strong>Backfill</strong> means the bot checks messages that appeared while it was offline or restarting.
+        </div>
+        <div class="space"></div>
+        <div>How it works:</div>
+        <div class="space"></div>
+        <div class="table">
+            <div class="table__row table__row--wide">
+                <div class="table__cell table__cell--num">1</div>
+                <div class="table__cell">The bot stores the “last message” it saw for each channel.</div>
+                <div class="table__cell">
+                    This is called a checkpoint — a marker of where we stopped.
+                </div>
+            </div>
+            <div class="table__row table__row--wide">
+                <div class="table__cell table__cell--num">2</div>
+                <div class="table__cell">After restart, it scans everything posted after that marker.</div>
+                <div class="table__cell">
+                    It searches for keywords and forwards matching messages.
+                </div>
+            </div>
+            <div class="table__row table__row--wide">
+                <div class="table__cell table__cell--num">3</div>
+                <div class="table__cell">When it finds matches, it forwards them and updates the marker.</div>
+                <div class="table__cell">
+                    This prevents missing messages.
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<div class="space"></div>
+
+<div class="card">
+    <div class="card__title">If something is wrong</div>
+    <div class="table">
+        <div class="table__row table__row--wide">
+            <div class="table__cell table__cell--num">Symptom</div>
+            <div class="table__cell">Possible reason</div>
+            <div class="table__cell">What to do</div>
+        </div>
+        <div class="table__row table__row--wide">
+            <div class="table__cell table__cell--num">Connected = NO</div>
+            <div class="table__cell">No Telegram connection or invalid session</div>
+            <div class="table__cell">Check the session file and press Restart.</div>
+        </div>
+        <div class="table__row table__row--wide">
+            <div class="table__cell table__cell--num">Messages are not forwarded</div>
+            <div class="table__cell">No keyword matches</div>
+            <div class="table__cell">Check the Keywords list and try a test post.</div>
+        </div>
+        <div class="table__row table__row--wide">
+            <div class="table__cell table__cell--num">Unclear what is happening</div>
+            <div class="table__cell">An internal error happened</div>
+            <div class="table__cell">Open Logs and check the latest entries.</div>
+        </div>
+    </div>
+</div>
+{% endif %}
 {% endblock %}

@@ -1,11 +1,11 @@
 {% extends "base.html" %}
-{% block title %}Keywords · tg-keyword-watcher{% endblock %}
+{% block title %}{{ t("keywords.title", lang) }} · tg-keyword-watcher{% endblock %}
 
 {% block content %}
-<h1 class="h1">Keywords</h1>
+<h1 class="h1">{{ t("keywords.title", lang) }}</h1>
 
 <div class="card">
-    <div class="card__title">Manage keywords</div>
+    <div class="card__title">{{ t("keywords.manage", lang) }}</div>
 
     {% if error %}
     <div class="alert alert--bad">{{ error }}</div>
@@ -13,14 +13,16 @@
 
     <div class="toolbar">
         <form method="get" action="/keywords" class="toolbar__form">
-            <input class="input" name="q" type="text" placeholder="Search" value="{{ q }}" />
-            <button class="btn btn--icon" type="submit" aria-label="Search">&#128269;</button>
+            <input class="input" name="q" type="text" placeholder="{{ t('keywords.search_placeholder', lang) }}" value="{{ q }}" />
+            <input type="hidden" name="lang" value="{{ lang }}" />
+            <button class="btn btn--icon" type="submit" aria-label="{{ t('keywords.search', lang) }}">&#128269;</button>
         </form>
         <form method="post" action="/keywords/add" class="toolbar__form">
-            <input class="input" name="keyword" type="text" placeholder="Add keyword" />
+            <input class="input" name="keyword" type="text" placeholder="{{ t('keywords.add_placeholder', lang) }}" />
             <input type="hidden" name="q" value="{{ q }}" />
             <input type="hidden" name="page" value="{{ page }}" />
-            <button class="btn btn--primary btn--icon" type="submit" aria-label="Add">&plus;</button>
+            <input type="hidden" name="lang" value="{{ lang }}" />
+            <button class="btn btn--primary btn--icon" type="submit" aria-label="{{ t('keywords.add', lang) }}">&plus;</button>
         </form>
     </div>
 </div>
@@ -28,17 +30,17 @@
 <div class="space"></div>
 
 <div class="card">
-    <div class="card__title">Keywords</div>
-    <div class="muted small">Total: {{ total }}</div>
+    <div class="card__title">{{ t("keywords.title", lang) }}</div>
+    <div class="muted small">{{ t("keywords.total", lang) }}: {{ total }}</div>
 
     <div class="space"></div>
 
     {% if keywords %}
     <div class="table">
         <div class="table__row table__row--head">
-            <div class="table__cell table__cell--num">#</div>
-            <div class="table__cell">Keyword</div>
-            <div class="table__cell table__cell--actions">Actions</div>
+            <div class="table__cell table__cell--num">{{ t("keywords.table.id", lang) }}</div>
+            <div class="table__cell">{{ t("keywords.table.word", lang) }}</div>
+            <div class="table__cell table__cell--actions">{{ t("keywords.table.actions", lang) }}</div>
         </div>
         {% for keyword in keywords %}
         <div class="table__row">
@@ -49,6 +51,7 @@
                     <input type="hidden" name="keyword" value="{{ keyword }}" />
                     <input type="hidden" name="q" value="{{ q }}" />
                     <input type="hidden" name="page" value="{{ page }}" />
+                    <input type="hidden" name="lang" value="{{ lang }}" />
                     <button class="btn btn--ghost btn--icon" type="submit" aria-label="Delete">&#128465;</button>
                 </form>
             </div>
@@ -60,19 +63,19 @@
 
     <div class="pagination">
         {% if page > 1 %}
-        <a class="btn btn--ghost btn--icon" href="/keywords?q={{ q|urlencode }}&page={{ page - 1 }}" aria-label="Prev">&larr;</a>
+        <a class="btn btn--ghost btn--icon" href="/keywords?q={{ q|urlencode }}&page={{ page - 1 }}&lang={{ lang }}" aria-label="Prev">&larr;</a>
         {% else %}
         <span class="btn btn--ghost btn--disabled btn--icon" aria-hidden="true">&larr;</span>
         {% endif %}
-        <span class="muted small">Page {{ page }} of {{ total_pages }}</span>
+        <span class="muted small">{{ t("keywords.page", lang) }} {{ page }} {{ t("keywords.of", lang) }} {{ total_pages }}</span>
         {% if page < total_pages %}
-        <a class="btn btn--ghost btn--icon" href="/keywords?q={{ q|urlencode }}&page={{ page + 1 }}" aria-label="Next">&rarr;</a>
+        <a class="btn btn--ghost btn--icon" href="/keywords?q={{ q|urlencode }}&page={{ page + 1 }}&lang={{ lang }}" aria-label="Next">&rarr;</a>
         {% else %}
         <span class="btn btn--ghost btn--disabled btn--icon" aria-hidden="true">&rarr;</span>
         {% endif %}
     </div>
     {% else %}
-    <div class="muted">No keywords yet</div>
+    <div class="muted">{{ t("keywords.empty", lang) }}</div>
     {% endif %}
 </div>
 {% endblock %}

@@ -1,16 +1,16 @@
 {% extends "base.html" %}
-{% block title %}Dashboard · tg-keyword-watcher{% endblock %}
+{% block title %}{{ t("dashboard.title", lang) }} · tg-keyword-watcher{% endblock %}
 
 {% block content %}
-<h1 class="h1">Dashboard</h1>
+<h1 class="h1">{{ t("dashboard.title", lang) }}</h1>
 
 <div class="grid">
     <div class="card">
-        <div class="card__title">Status</div>
+        <div class="card__title">{{ t("dashboard.status", lang) }}</div>
 
         <div class="kv">
             <div class="kv__row">
-                <div class="kv__k">Connected</div>
+                <div class="kv__k">{{ t("dashboard.connected", lang) }}</div>
                 <div class="kv__v">
                     {% if connected == 'YES' %}
                     <span class="badge badge--ok">YES</span>
@@ -21,7 +21,7 @@
             </div>
 
             <div class="kv__row">
-                <div class="kv__k">Bot enabled</div>
+                <div class="kv__k">{{ t("dashboard.bot_enabled", lang) }}</div>
                 <div class="kv__v">
                     {% if bot_enabled == 'YES' %}
                     <span class="badge badge--ok">YES</span>
@@ -32,57 +32,57 @@
             </div>
 
             <div class="kv__row">
-                <div class="kv__k">TARGET_CHANNEL</div>
+                <div class="kv__k">{{ t("dashboard.target", lang) }}</div>
                 <div class="kv__v">{{ target_channel }}</div>
             </div>
 
             <div class="kv__row">
-                <div class="kv__k">SESSION_NAME</div>
+                <div class="kv__k">{{ t("dashboard.session", lang) }}</div>
                 <div class="kv__v">{{ session_name }}</div>
             </div>
 
             <div class="kv__row">
-                <div class="kv__k">Server time (UTC)</div>
+                <div class="kv__k">{{ t("dashboard.server_time", lang) }}</div>
                 <div class="kv__v">{{ server_time_utc }}</div>
             </div>
         </div>
 
         <div class="space"></div>
 
-        <div class="card__title">Controls</div>
+        <div class="card__title">{{ t("dashboard.controls", lang) }}</div>
         <div class="controls">
             <form method="post" action="/controls/enable">
-                <button class="btn btn--primary" type="submit">Enable</button>
+                <button class="btn btn--primary" type="submit">{{ t("dashboard.enable", lang) }}</button>
             </form>
             <form method="post" action="/controls/disable">
-                <button class="btn" type="submit">Disable</button>
+                <button class="btn" type="submit">{{ t("dashboard.disable", lang) }}</button>
             </form>
             <form method="post" action="/controls/restart">
-                <button class="btn" type="submit">Restart</button>
+                <button class="btn" type="submit">{{ t("dashboard.restart", lang) }}</button>
             </form>
             <form method="post" action="/controls/cleanup">
-                <button class="btn" type="submit">Cleanup</button>
+                <button class="btn" type="submit">{{ t("dashboard.cleanup", lang) }}</button>
             </form>
         </div>
-        <div class="muted small">Restart is a soft signal. Telethon loop will handle it later.</div>
+        <div class="muted small">{{ t("dashboard.restart_hint", lang) }}</div>
     </div>
 
     <div class="card">
-        <div class="card__title">Last error</div>
+        <div class="card__title">{{ t("dashboard.last_error", lang) }}</div>
         {% if last_error %}
         <div class="mono pre">{{ last_error }}</div>
         {% else %}
-        <div class="muted">No errors</div>
+        <div class="muted">{{ t("dashboard.no_errors", lang) }}</div>
         {% endif %}
 
         <div class="space"></div>
 
-        <div class="card__title">Last event</div>
+        <div class="card__title">{{ t("dashboard.last_event", lang) }}</div>
         {% if last_event_time %}
         <div class="muted small">{{ last_event_time }}</div>
         <div class="mono pre">{{ last_event_message }}</div>
         {% else %}
-        <div class="muted">No events</div>
+        <div class="muted">{{ t("dashboard.no_events", lang) }}</div>
         {% endif %}
     </div>
 </div>

@@ -8,6 +8,7 @@ from fastapi.responses import HTMLResponse
 from fastapi.templating import Jinja2Templates
 
 from app.web.deps import RedirectToLogin, require_auth
+from app.web.i18n import apply_lang_cookie, build_lang_urls, resolve_lang, t
 
 
 router = APIRouter()
@@ -28,16 +29,20 @@ async def dashboard(request: Request) -> HTMLResponse:
 
         return login_redirect(next_path="/")
 
+    lang, set_cookie = resolve_lang(request)
     repo = request.app.state.repo
     bot_state = await repo.bot_state_get()
     app_status = await repo.app_status_get()
 
     tpl = _templates()
-    return tpl.TemplateResponse(
+    resp = tpl.TemplateResponse(
         "dashboard.html",
         {
             "request": request,
             "nav_active": "dashboard",
+            "lang": lang,
+            "lang_urls": build_lang_urls(request),
+            "t": t,
             "target_channel": os.getenv("TARGET_CHANNEL", ""),
             "session_name": os.getenv("SESSION_NAME", ""),
             "connected": "YES" if app_status.connected else "NO",
@@ -48,3 +53,5 @@ async def dashboard(request: Request) -> HTMLResponse:
             "server_time_utc": datetime.now(timezone.utc).isoformat(),
         },
     )
+    apply_lang_cookie(resp, lang, set_cookie)
+    return resp

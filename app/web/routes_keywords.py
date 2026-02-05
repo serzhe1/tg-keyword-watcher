@@ -6,6 +6,7 @@ from fastapi import APIRouter, Request
 from fastapi.responses import HTMLResponse, RedirectResponse
 
 from app.web.deps import RedirectToLogin, require_auth
+from app.web.i18n import apply_lang_cookie, build_lang_urls, resolve_lang, t
 
 
 router = APIRouter()
@@ -20,6 +21,7 @@ async def keywords_page(request: Request) -> HTMLResponse:
 
         return login_redirect(next_path="/keywords")
 
+    lang, set_cookie = resolve_lang(request)
     repo = request.app.state.repo
     q = (request.query_params.get("q") or "").strip()
     error = (request.query_params.get("error") or "").strip()
@@ -40,11 +42,14 @@ async def keywords_page(request: Request) -> HTMLResponse:
 
     from app.main import templates  # noqa: WPS433
 
-    return templates.TemplateResponse(
+    resp = templates.TemplateResponse(
         "keywords.html",
         {
             "request": request,
             "nav_active": "keywords",
+            "lang": lang,
+            "lang_urls": build_lang_urls(request),
+            "t": t,
             "q": q,
             "error": error,
             "total": total,
@@ -54,6 +59,8 @@ async def keywords_page(request: Request) -> HTMLResponse:
             "offset": offset,
         },
     )
+    apply_lang_cookie(resp, lang, set_cookie)
+    return resp
 
 
 @router.post("/keywords/add")
@@ -65,6 +72,7 @@ async def keywords_add(request: Request) -> RedirectResponse:
 
     form = await request.form()
     word = (form.get("keyword") or "").strip()
+    lang = (form.get("lang") or "").strip()
     q = (form.get("q") or "").strip()
     page = (form.get("page") or "").strip()
     params = {}
@@ -72,12 +80,16 @@ async def keywords_add(request: Request) -> RedirectResponse:
         params["q"] = q
     if page:
         params["page"] = page
-    query = f"?{urlencode(params)}" if params else ""
+    if lang:
+        params["lang"] = lang
     if not word:
+        params["error"] = t("keywords.error_empty", lang)
+        query = f"?{urlencode(params)}"
         return RedirectResponse(
-            url=f"/keywords?error=Keyword%20is%20empty{query}",
+            url=f"/keywords{query}",
             status_code=303,
         )
+    query = f"?{urlencode(params)}" if params else ""
 
     repo = request.app.state.repo
     await repo.keyword_create(word)
@@ -93,6 +105,7 @@ async def keywords_delete(request: Request) -> RedirectResponse:
 
     form = await request.form()
     word = (form.get("keyword") or "").strip()
+    lang = (form.get("lang") or "").strip()
     q = (form.get("q") or "").strip()
     page = (form.get("page") or "").strip()
     params = {}
@@ -100,6 +113,8 @@ async def keywords_delete(request: Request) -> RedirectResponse:
         params["q"] = q
     if page:
         params["page"] = page
+    if lang:
+        params["lang"] = lang
     query = f"?{urlencode(params)}" if params else ""
     if word:
         repo = request.app.state.repo

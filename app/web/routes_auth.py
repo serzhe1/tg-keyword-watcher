@@ -5,6 +5,7 @@ from fastapi.responses import HTMLResponse, RedirectResponse, Response
 from fastapi.templating import Jinja2Templates
 
 from app.web.auth import login_expiry_utc, set_logged_in, verify_credentials, clear_login
+from app.web.i18n import apply_lang_cookie, build_lang_urls, resolve_lang, t
 
 
 router = APIRouter()
@@ -20,10 +21,20 @@ def _templates() -> Jinja2Templates:
 @router.get("/login", response_class=HTMLResponse)
 async def login_page(request: Request, next: str = "/") -> HTMLResponse:
     tpl = _templates()
-    return tpl.TemplateResponse(
+    lang, set_cookie = resolve_lang(request)
+    resp = tpl.TemplateResponse(
         "login.html",
-        {"request": request, "next": next, "error": None},
+        {
+            "request": request,
+            "next": next,
+            "error": None,
+            "lang": lang,
+            "lang_urls": build_lang_urls(request),
+            "t": t,
+        },
     )
+    apply_lang_cookie(resp, lang, set_cookie)
+    return resp
 
 
 @router.post("/login")
@@ -35,19 +46,27 @@ async def login_action(
 ) -> Response:
     tpl = _templates()
 
+    lang, set_cookie = resolve_lang(request)
+
     if not verify_credentials(login, password):
-        return tpl.TemplateResponse(
+        resp = tpl.TemplateResponse(
             "login.html",
             {
                 "request": request,
                 "next": next,
-                "error": "Invalid login or password",
+                "error": t("login.error", lang),
+                "lang": lang,
+                "lang_urls": build_lang_urls(request),
+                "t": t,
             },
             status_code=401,
         )
+        apply_lang_cookie(resp, lang, set_cookie)
+        return resp
 
     resp = RedirectResponse(url=next or "/", status_code=303)
     set_logged_in(resp)
+    apply_lang_cookie(resp, lang, set_cookie)
     return resp
 
 

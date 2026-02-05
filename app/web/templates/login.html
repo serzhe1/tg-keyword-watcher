@@ -1,15 +1,22 @@
 <!doctype html>
-<html lang="en">
+<html lang="{{ lang }}">
 <head>
     <meta charset="utf-8" />
     <meta name="viewport" content="width=device-width,initial-scale=1" />
-    <title>Login · tg-keyword-watcher</title>
+    <title>{{ t("login.title", lang) }} · tg-keyword-watcher</title>
     <link rel="stylesheet" href="/static/styles.css" />
 </head>
 <body>
 <main class="container">
     <div class="card card--narrow">
-        <h1 class="h1">Login</h1>
+        <div class="login-top">
+            <h1 class="h1">{{ t("login.title", lang) }}</h1>
+            <div class="lang-switch">
+                <a class="lang-switch__link {% if lang=='ru' %}lang-switch__link--active{% endif %}" href="{{ lang_urls['ru'] }}">{{ t("lang.ru", lang) }}</a>
+                <span class="lang-switch__sep">/</span>
+                <a class="lang-switch__link {% if lang=='en' %}lang-switch__link--active{% endif %}" href="{{ lang_urls['en'] }}">{{ t("lang.en", lang) }}</a>
+            </div>
+        </div>
 
         {% if error %}
         <div class="alert alert--bad">{{ error }}</div>
@@ -17,21 +24,22 @@
 
         <form method="post" action="/login" class="form">
             <input type="hidden" name="next" value="{{ next }}" />
+            <input type="hidden" name="lang" value="{{ lang }}" />
 
             <label class="label">
-                <div class="label__title">Login</div>
+                <div class="label__title">{{ t("login.login", lang) }}</div>
                 <input class="input" name="login" autocomplete="username" required />
             </label>
 
             <label class="label">
-                <div class="label__title">Password</div>
+                <div class="label__title">{{ t("login.password", lang) }}</div>
                 <input class="input" name="password" type="password" autocomplete="current-password" required />
             </label>
 
-            <button class="btn btn--primary" type="submit">Sign in</button>
+            <button class="btn btn--primary" type="submit">{{ t("login.submit", lang) }}</button>
         </form>
 
-        <div class="muted small">Credentials are configured via environment variables.</div>
+        <div class="muted small">{{ t("login.hint", lang) }}</div>
     </div>
 </main>
 </body>
