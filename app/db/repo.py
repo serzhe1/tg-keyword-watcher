@@ -2,34 +2,15 @@ from __future__ import annotations
 
 from dataclasses import dataclass
 from datetime import datetime, timedelta, timezone
+from typing import Any
 
 import asyncpg
 
 
-def utc_now() -> datetime:
-    return datetime.now(timezone.utc)
-
-
-def normalize_keyword(s: str) -> str:
-    # Normalize for case-insensitive matching and treat "ё" == "е"
-    s = s.strip()
-    s = s.replace("Ё", "Е").replace("ё", "е")
-    return s.lower()
-
-
 @dataclass(frozen=True)
-class KeywordRow:
-    id: int
-    keyword: str
-    created_at: datetime
-
-
-@dataclass(frozen=True)
-class EventLogRow:
-    id: int
-    level: str
-    message: str
-    created_at: datetime
+class BotState:
+    enabled: bool
+    restart_requested_at: datetime | None
 
 
 @dataclass(frozen=True)
@@ -40,279 +21,272 @@ class AppStatus:
     last_event_message: str | None
 
 
-@dataclass(frozen=True)
-class BotState:
-    enabled: bool
-
-
 class Repo:
     def __init__(self, pool: asyncpg.Pool) -> None:
         self._pool = pool
 
-    # ---------- keywords ----------
-
-    async def keywords_list(
-            self,
-            q: str | None,
-            limit: int,
-            offset: int,
-    ) -> tuple[list[KeywordRow], int]:
-        """
-        Returns (items, total).
-        Search is substring-based, case-insensitive, and treats "ё" == "е".
-        """
-        limit = max(1, min(limit, 200))
-        offset = max(0, offset)
-        qn = normalize_keyword(q) if q else None
-
+    # ----------------------------
+    # Keywords
+    # ----------------------------
+    async def keyword_create(self, word: str) -> None:
         async with self._pool.acquire() as conn:
-            if qn:
+            await conn.execute(
+                """
+                INSERT INTO keywords(word)
+                VALUES ($1)
+                    ON CONFLICT (word) DO NOTHING;
+                """,
+                word,
+            )
+
+    async def keyword_delete(self, word: str) -> None:
+        async with self._pool.acquire() as conn:
+            await conn.execute("DELETE FROM keywords WHERE word = $1;", word)
+
+    async def keyword_list(self, q: str | None, limit: int, offset: int) -> tuple[list[str], int]:
+        q = (q or "").strip()
+        async with self._pool.acquire() as conn:
+            if q:
+                rows = await conn.fetch(
+                    """
+                    SELECT word
+                    FROM keywords
+                    WHERE word ILIKE '%' || $1 || '%'
+                    ORDER BY word ASC
+                        LIMIT $2 OFFSET $3;
+                    """,
+                    q,
+                    limit,
+                    offset,
+                )
                 total = await conn.fetchval(
                     """
                     SELECT COUNT(*)
                     FROM keywords
-                    WHERE replace(lower(keyword), 'ё', 'е') LIKE '%' || $1 || '%'
+                    WHERE word ILIKE '%' || $1 || '%';
                     """,
-                    qn,
-                )
-                rows = await conn.fetch(
-                    """
-                    SELECT id, keyword, created_at
-                    FROM keywords
-                    WHERE replace(lower(keyword), 'ё', 'е') LIKE '%' || $1 || '%'
-                    ORDER BY created_at DESC, id DESC
-                        LIMIT $2 OFFSET $3
-                    """,
-                    qn,
-                    limit,
-                    offset,
+                    q,
                 )
             else:
-                total = await conn.fetchval("SELECT COUNT(*) FROM keywords;")
                 rows = await conn.fetch(
                     """
-                    SELECT id, keyword, created_at
+                    SELECT word
                     FROM keywords
-                    ORDER BY created_at DESC, id DESC
-                        LIMIT $1 OFFSET $2
+                    ORDER BY word ASC
+                        LIMIT $1 OFFSET $2;
                     """,
                     limit,
                     offset,
                 )
+                total = await conn.fetchval("SELECT COUNT(*) FROM keywords;")
 
-        items = [KeywordRow(id=r["id"], keyword=r["keyword"], created_at=r["created_at"]) for r in rows]
-        return items, int(total)
+        return [r["word"] for r in rows], int(total)
 
-    async def keywords_add(self, keyword: str) -> bool:
-        """
-        Returns True if inserted, False if already exists (idempotent add).
-        Duplicate check is done in normalized form so "еж" and "ёж" are treated as the same.
-        """
-        kw = keyword.strip()
-        if not kw:
-            raise ValueError("keyword is empty")
-
+    async def keyword_all(self) -> list[str]:
         async with self._pool.acquire() as conn:
-            exists = await conn.fetchval(
-                """
-                SELECT 1
-                FROM keywords
-                WHERE replace(lower(keyword), 'ё', 'е') = $1
-                    LIMIT 1
-                """,
-                normalize_keyword(kw),
-            )
-            if exists:
-                return False
+            rows = await conn.fetch("SELECT word FROM keywords ORDER BY word ASC;")
+            return [r["word"] for r in rows]
 
-            await conn.execute("INSERT INTO keywords(keyword) VALUES($1);", kw)
-            return True
-
-    async def keywords_delete(self, keyword_id: int) -> bool:
-        async with self._pool.acquire() as conn:
-            res = await conn.execute("DELETE FROM keywords WHERE id=$1;", int(keyword_id))
-        # asyncpg returns "DELETE <n>"
-        return res.endswith("1")
-
-    async def keywords_all_normalized(self) -> list[str]:
-        async with self._pool.acquire() as conn:
-            rows = await conn.fetch("SELECT keyword FROM keywords ORDER BY id ASC;")
-        return [normalize_keyword(r["keyword"]) for r in rows]
-
-    # ---------- forwarded_messages: idempotency / pending-retry ----------
-
+    # ----------------------------
+    # Forwarded messages (idempotency skeleton; will be used later)
+    # ----------------------------
     async def forwarded_claim(
             self,
             source_chat_id: int,
             source_message_id: int,
-            retry_after_seconds: int,
+            pending_timeout_seconds: int,
     ) -> bool:
         """
-        Atomic claim for processing:
-        - inserts a pending row if it doesn't exist
-        - re-claims pending/failed if claim is older than retry_after_seconds
-        - never allows re-processing if status == sent
-        Returns True if the caller should process now, otherwise False.
+        Idempotency claim:
+        - Insert as pending if not exists.
+        - If exists as sent -> cannot claim.
+        - If exists as pending and not expired -> cannot claim.
+        - If pending expired -> re-claim (update updated_at).
         """
-        retry_after_seconds = max(1, retry_after_seconds)
+        now = datetime.now(timezone.utc)
+        timeout = now - timedelta(seconds=pending_timeout_seconds)
 
         async with self._pool.acquire() as conn:
             async with conn.transaction():
                 row = await conn.fetchrow(
                     """
-                    SELECT status, claimed_at
+                    SELECT status, updated_at
                     FROM forwarded_messages
-                    WHERE source_chat_id=$1 AND source_message_id=$2
+                    WHERE source_chat_id = $1 AND source_message_id = $2
+                        FOR UPDATE;
                     """,
-                    int(source_chat_id),
-                    int(source_message_id),
+                    source_chat_id,
+                    source_message_id,
                 )
-
-                now = utc_now()
 
                 if row is None:
                     await conn.execute(
                         """
-                        INSERT INTO forwarded_messages(source_chat_id, source_message_id, status, claimed_at)
-                        VALUES ($1, $2, 'pending', $3)
+                        INSERT INTO forwarded_messages(source_chat_id, source_message_id, status, created_at, updated_at)
+                        VALUES ($1, $2, 'pending', $3, $3);
                         """,
-                        int(source_chat_id),
-                        int(source_message_id),
+                        source_chat_id,
+                        source_message_id,
                         now,
                     )
                     return True
 
                 status = row["status"]
-                claimed_at = row["claimed_at"]
+                updated_at = row["updated_at"]
 
                 if status == "sent":
                     return False
 
-                # Allow retry if claim is missing or expired
-                if claimed_at is None or (now - claimed_at) >= timedelta(seconds=retry_after_seconds):
-                    await conn.execute(
-                        """
-                        UPDATE forwarded_messages
-                        SET status='pending', claimed_at=$3, updated_at=NOW()
-                        WHERE source_chat_id=$1 AND source_message_id=$2
-                        """,
-                        int(source_chat_id),
-                        int(source_message_id),
-                        now,
-                    )
-                    return True
+                if status == "pending" and updated_at is not None and updated_at > timeout:
+                    return False
 
-                return False
+                await conn.execute(
+                    """
+                    UPDATE forwarded_messages
+                    SET status = 'pending', updated_at = $3
+                    WHERE source_chat_id = $1 AND source_message_id = $2;
+                    """,
+                    source_chat_id,
+                    source_message_id,
+                    now,
+                )
+                return True
 
     async def forwarded_mark_sent(self, source_chat_id: int, source_message_id: int) -> None:
+        now = datetime.now(timezone.utc)
         async with self._pool.acquire() as conn:
             await conn.execute(
                 """
                 UPDATE forwarded_messages
-                SET status='sent', sent_at=NOW(), updated_at=NOW()
-                WHERE source_chat_id=$1 AND source_message_id=$2
+                SET status = 'sent', updated_at = $3
+                WHERE source_chat_id = $1 AND source_message_id = $2;
                 """,
-                int(source_chat_id),
-                int(source_message_id),
+                source_chat_id,
+                source_message_id,
+                now,
             )
 
     async def forwarded_mark_failed(self, source_chat_id: int, source_message_id: int, error: str) -> None:
-        err = (error or "").strip()
-        if len(err) > 4000:
-            err = err[:4000]
-
+        now = datetime.now(timezone.utc)
         async with self._pool.acquire() as conn:
             await conn.execute(
                 """
                 UPDATE forwarded_messages
-                SET status='failed',
-                    fail_count = fail_count + 1,
-                    last_error=$3,
-                    updated_at=NOW()
-                WHERE source_chat_id=$1 AND source_message_id=$2
+                SET status = 'failed', last_error = $3, updated_at = $4
+                WHERE source_chat_id = $1 AND source_message_id = $2;
                 """,
-                int(source_chat_id),
-                int(source_message_id),
-                err,
+                source_chat_id,
+                source_message_id,
+                error,
+                now,
             )
 
-    # ---------- channel_checkpoint ----------
-
-    async def checkpoint_get(self, chat_id: int) -> tuple[int, datetime | None] | None:
+    # ----------------------------
+    # Channel checkpoint (skeleton; will be used later)
+    # ----------------------------
+    async def checkpoint_get(self, source_chat_id: int) -> tuple[int | None, datetime | None]:
         async with self._pool.acquire() as conn:
             row = await conn.fetchrow(
                 """
                 SELECT last_message_id, last_message_date
                 FROM channel_checkpoint
-                WHERE chat_id=$1
+                WHERE source_chat_id = $1;
                 """,
-                int(chat_id),
+                source_chat_id,
             )
-        if row is None:
-            return None
-        return int(row["last_message_id"]), row["last_message_date"]
+            if not row:
+                return None, None
+            return row["last_message_id"], row["last_message_date"]
 
-    async def checkpoint_upsert(self, chat_id: int, last_message_id: int, last_message_date: datetime | None) -> None:
+    async def checkpoint_upsert(self, source_chat_id: int, last_message_id: int, last_message_date: datetime) -> None:
         async with self._pool.acquire() as conn:
             await conn.execute(
                 """
-                INSERT INTO channel_checkpoint(chat_id, last_message_id, last_message_date, updated_at)
-                VALUES ($1, $2, $3, NOW())
-                    ON CONFLICT (chat_id) DO UPDATE
-                                                 SET last_message_id=EXCLUDED.last_message_id,
-                                                 last_message_date=EXCLUDED.last_message_date,
-                                                 updated_at=NOW()
+                INSERT INTO channel_checkpoint(source_chat_id, last_message_id, last_message_date, updated_at)
+                VALUES ($1, $2, $3, $4)
+                    ON CONFLICT (source_chat_id)
+                DO UPDATE SET
+                    last_message_id = EXCLUDED.last_message_id,
+                                           last_message_date = EXCLUDED.last_message_date,
+                                           updated_at = EXCLUDED.updated_at;
                 """,
-                int(chat_id),
-                int(last_message_id),
+                source_chat_id,
+                last_message_id,
                 last_message_date,
+                datetime.now(timezone.utc),
             )
 
-    # ---------- event_log (errors only) ----------
-
-    async def log_error(self, message: str) -> None:
-        msg = (message or "").strip()
-        if not msg:
-            msg = "unknown error"
-        if len(msg) > 4000:
-            msg = msg[:4000]
-
+    # ----------------------------
+    # Event log
+    # ----------------------------
+    async def event_error_add(self, message: str) -> None:
         async with self._pool.acquire() as conn:
             await conn.execute(
-                "INSERT INTO event_log(level, message) VALUES('error', $1);",
-                msg,
+                """
+                INSERT INTO event_log(level, message, created_at)
+                VALUES ('error', $1, $2);
+                """,
+                message,
+                datetime.now(timezone.utc),
             )
 
-    async def event_log_list(self, limit: int = 100) -> list[EventLogRow]:
-        limit = max(1, min(limit, 200))
+    async def event_error_latest(self, limit: int = 100) -> list[dict[str, Any]]:
         async with self._pool.acquire() as conn:
             rows = await conn.fetch(
                 """
-                SELECT id, level, message, created_at
+                SELECT id, message, created_at
                 FROM event_log
-                ORDER BY id DESC
-                    LIMIT $1
+                WHERE level = 'error'
+                ORDER BY created_at DESC
+                    LIMIT $1;
                 """,
                 limit,
             )
-        return [EventLogRow(id=r["id"], level=r["level"], message=r["message"], created_at=r["created_at"]) for r in rows]
+            return [dict(r) for r in rows]
 
-    # ---------- bot_state / app_status ----------
-
+    # ----------------------------
+    # Singleton tables: bot_state / app_status
+    # ----------------------------
     async def bot_state_get(self) -> BotState:
         async with self._pool.acquire() as conn:
-            enabled = await conn.fetchval("SELECT enabled FROM bot_state WHERE id=1;")
-        return BotState(enabled=bool(enabled))
+            row = await conn.fetchrow(
+                """
+                SELECT enabled, restart_requested_at
+                FROM bot_state
+                WHERE id = 1;
+                """
+            )
+            if row is None:
+                await conn.execute(
+                    "INSERT INTO bot_state(id, enabled, restart_requested_at) VALUES (1, false, NULL) ON CONFLICT (id) DO NOTHING;"
+                )
+                return BotState(enabled=False, restart_requested_at=None)
 
-    async def bot_state_set(self, enabled: bool) -> None:
+            return BotState(enabled=bool(row["enabled"]), restart_requested_at=row["restart_requested_at"])
+
+    async def bot_state_set_enabled(self, enabled: bool) -> None:
         async with self._pool.acquire() as conn:
             await conn.execute(
                 """
-                UPDATE bot_state
-                SET enabled=$1, updated_at=NOW()
-                WHERE id=1
+                INSERT INTO bot_state(id, enabled, restart_requested_at)
+                VALUES (1, $1, NULL)
+                    ON CONFLICT (id)
+                DO UPDATE SET enabled = EXCLUDED.enabled;
                 """,
-                bool(enabled),
+                enabled,
+            )
+
+    async def bot_state_request_restart(self) -> None:
+        now = datetime.now(timezone.utc)
+        async with self._pool.acquire() as conn:
+            await conn.execute(
+                """
+                INSERT INTO bot_state(id, enabled, restart_requested_at)
+                VALUES (1, false, $1)
+                    ON CONFLICT (id)
+                DO UPDATE SET restart_requested_at = EXCLUDED.restart_requested_at;
+                """,
+                now,
             )
 
     async def app_status_get(self) -> AppStatus:
@@ -321,82 +295,93 @@ class Repo:
                 """
                 SELECT connected, last_error, last_event_time, last_event_message
                 FROM app_status
-                WHERE id=1
+                WHERE id = 1;
                 """
             )
-        return AppStatus(
-            connected=bool(row["connected"]),
-            last_error=row["last_error"],
-            last_event_time=row["last_event_time"],
-            last_event_message=row["last_event_message"],
-        )
+            if row is None:
+                await conn.execute(
+                    """
+                    INSERT INTO app_status(id, connected, last_error, last_event_time, last_event_message)
+                    VALUES (1, false, NULL, NULL, NULL)
+                        ON CONFLICT (id) DO NOTHING;
+                    """
+                )
+                return AppStatus(
+                    connected=False,
+                    last_error=None,
+                    last_event_time=None,
+                    last_event_message=None,
+                )
+
+            return AppStatus(
+                connected=bool(row["connected"]),
+                last_error=row["last_error"],
+                last_event_time=row["last_event_time"],
+                last_event_message=row["last_event_message"],
+            )
 
     async def app_status_set_connected(self, connected: bool) -> None:
         async with self._pool.acquire() as conn:
             await conn.execute(
                 """
-                UPDATE app_status
-                SET connected=$1, updated_at=NOW()
-                WHERE id=1
+                INSERT INTO app_status(id, connected, last_error, last_event_time, last_event_message)
+                VALUES (1, $1, NULL, NULL, NULL)
+                    ON CONFLICT (id)
+                DO UPDATE SET connected = EXCLUDED.connected;
                 """,
-                bool(connected),
+                connected,
             )
 
-    async def app_status_set_error(self, error: str | None) -> None:
-        err = (error or "").strip() if error else None
-        if err and len(err) > 4000:
-            err = err[:4000]
-
+    async def app_status_set_error(self, error: str) -> None:
         async with self._pool.acquire() as conn:
             await conn.execute(
                 """
-                UPDATE app_status
-                SET last_error=$1, updated_at=NOW()
-                WHERE id=1
+                INSERT INTO app_status(id, connected, last_error, last_event_time, last_event_message)
+                VALUES (1, false, $1, NULL, NULL)
+                    ON CONFLICT (id)
+                DO UPDATE SET last_error = EXCLUDED.last_error;
                 """,
-                err,
+                error,
             )
 
-    async def app_status_set_last_event(self, when: datetime, message: str) -> None:
-        msg = (message or "").strip()
-        if len(msg) > 4000:
-            msg = msg[:4000]
-
+    async def app_status_set_event(self, message: str) -> None:
+        now = datetime.now(timezone.utc)
         async with self._pool.acquire() as conn:
             await conn.execute(
                 """
-                UPDATE app_status
-                SET last_event_time=$1,
-                    last_event_message=$2,
-                    updated_at=NOW()
-                WHERE id=1
+                INSERT INTO app_status(id, connected, last_error, last_event_time, last_event_message)
+                VALUES (1, false, NULL, $1, $2)
+                    ON CONFLICT (id)
+                DO UPDATE SET last_event_time = EXCLUDED.last_event_time,
+                                           last_event_message = EXCLUDED.last_event_message;
                 """,
-                when,
-                msg,
+                now,
+                message,
             )
 
-    # ---------- cleanup ----------
-
-    async def cleanup(self, event_log_days: int = 7, forwarded_days: int = 30) -> dict[str, int]:
-        event_log_days = max(1, event_log_days)
-        forwarded_days = max(1, forwarded_days)
+    # ----------------------------
+    # Cleanup
+    # ----------------------------
+    async def cleanup(self) -> dict[str, int]:
+        now = datetime.now(timezone.utc)
+        log_cutoff = now - timedelta(days=7)
+        forwards_cutoff = now - timedelta(days=30)
 
         async with self._pool.acquire() as conn:
-            async with conn.transaction():
-                res1 = await conn.execute(
-                    "DELETE FROM event_log WHERE created_at < NOW() - ($1::text || ' days')::interval;",
-                    str(event_log_days),
-                )
-                res2 = await conn.execute(
-                    "DELETE FROM forwarded_messages WHERE created_at < NOW() - ($1::text || ' days')::interval;",
-                    str(forwarded_days),
-                )
+            deleted_logs = await conn.execute(
+                "DELETE FROM event_log WHERE created_at < $1;",
+                log_cutoff,
+            )
+            deleted_forwards = await conn.execute(
+                "DELETE FROM forwarded_messages WHERE created_at < $1;",
+                forwards_cutoff,
+            )
 
-        def parse_count(res: str) -> int:
-            # asyncpg returns "DELETE <n>"
+        # asyncpg returns "DELETE <n>"
+        def _count(cmd: str) -> int:
             try:
-                return int(res.split()[-1])
+                return int(cmd.split()[-1])
             except Exception:
                 return 0
 
-        return {"event_log": parse_count(res1), "forwarded_messages": parse_count(res2)}
+        return {"event_log": _count(deleted_logs), "forwarded_messages": _count(deleted_forwards)}

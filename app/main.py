@@ -9,6 +9,7 @@ from fastapi.templating import Jinja2Templates
 from app.db.migrate import apply_migrations, get_database_url_from_env
 from app.db.repo import Repo
 from app.web.routes_auth import router as auth_router
+from app.web.routes_controls import router as controls_router
 from app.web.routes_dashboard import router as dashboard_router
 
 
@@ -38,6 +39,7 @@ app.mount("/static", StaticFiles(directory=STATIC_DIR), name="static")
 # Routes
 app.include_router(auth_router)
 app.include_router(dashboard_router)
+app.include_router(controls_router)
 
 
 @app.on_event("startup")

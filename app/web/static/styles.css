@@ -216,3 +216,9 @@ body {
 .space { height: 12px; }
 
 .logout { margin: 0; }
+
+.controls {
+  display: flex;
+  gap: 10px;
+  flex-wrap: wrap;
+}
