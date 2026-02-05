@@ -12,10 +12,10 @@
             <div class="kv__row">
                 <div class="kv__k">{{ t("dashboard.connected", lang) }}</div>
                 <div class="kv__v">
-                    {% if connected == 'YES' %}
-                    <span class="badge badge--ok">YES</span>
+                    {% if connected %}
+                    <span class="badge badge--ok">{{ t("common.yes", lang) }}</span>
                     {% else %}
-                    <span class="badge badge--bad">NO</span>
+                    <span class="badge badge--bad">{{ t("common.no", lang) }}</span>
                     {% endif %}
                 </div>
             </div>
@@ -23,10 +23,10 @@
             <div class="kv__row">
                 <div class="kv__k">{{ t("dashboard.bot_enabled", lang) }}</div>
                 <div class="kv__v">
-                    {% if bot_enabled == 'YES' %}
-                    <span class="badge badge--ok">YES</span>
+                    {% if bot_enabled %}
+                    <span class="badge badge--ok">{{ t("common.yes", lang) }}</span>
                     {% else %}
-                    <span class="badge badge--warn">NO</span>
+                    <span class="badge badge--warn">{{ t("common.no", lang) }}</span>
                     {% endif %}
                 </div>
             </div>
