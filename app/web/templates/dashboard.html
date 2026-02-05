@@ -1,0 +1,70 @@
+{% extends "base.html" %}
+{% block title %}Dashboard · tg-keyword-watcher{% endblock %}
+
+{% block content %}
+<h1 class="h1">Dashboard</h1>
+
+<div class="grid">
+    <div class="card">
+        <div class="card__title">Status</div>
+
+        <div class="kv">
+            <div class="kv__row">
+                <div class="kv__k">Connected</div>
+                <div class="kv__v">
+                    {% if connected == 'YES' %}
+                    <span class="badge badge--ok">YES</span>
+                    {% else %}
+                    <span class="badge badge--bad">NO</span>
+                    {% endif %}
+                </div>
+            </div>
+
+            <div class="kv__row">
+                <div class="kv__k">Bot enabled</div>
+                <div class="kv__v">
+                    {% if bot_enabled == 'YES' %}
+                    <span class="badge badge--ok">YES</span>
+                    {% else %}
+                    <span class="badge badge--warn">NO</span>
+                    {% endif %}
+                </div>
+            </div>
+
+            <div class="kv__row">
+                <div class="kv__k">TARGET_CHANNEL</div>
+                <div class="kv__v">{{ target_channel }}</div>
+            </div>
+
+            <div class="kv__row">
+                <div class="kv__k">SESSION_NAME</div>
+                <div class="kv__v">{{ session_name }}</div>
+            </div>
+
+            <div class="kv__row">
+                <div class="kv__k">Server time (UTC)</div>
+                <div class="kv__v">{{ server_time_utc }}</div>
+            </div>
+        </div>
+    </div>
+
+    <div class="card">
+        <div class="card__title">Last error</div>
+        {% if last_error %}
+        <div class="mono pre">{{ last_error }}</div>
+        {% else %}
+        <div class="muted">No errors</div>
+        {% endif %}
+
+        <div class="space"></div>
+
+        <div class="card__title">Last event</div>
+        {% if last_event_time %}
+        <div class="muted small">{{ last_event_time }}</div>
+        <div class="mono pre">{{ last_event_message }}</div>
+        {% else %}
+        <div class="muted">No events</div>
+        {% endif %}
+    </div>
+</div>
+{% endblock %}

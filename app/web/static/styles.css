@@ -32,13 +32,19 @@ body {
   backdrop-filter: blur(8px);
 }
 
+.topbar__row {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  justify-content: space-between;
+}
+
 .brand {
   font-weight: 700;
   letter-spacing: 0.2px;
 }
 
 .nav {
-  margin-top: 8px;
   display: flex;
   gap: 8px;
   align-items: center;
@@ -74,6 +80,11 @@ body {
   padding: 14px;
 }
 
+.card--narrow {
+  max-width: 420px;
+  margin: 40px auto;
+}
+
 .card__title {
   font-weight: 600;
   margin-bottom: 10px;
@@ -98,23 +109,29 @@ body {
   border-radius: 999px;
   font-size: 12px;
   font-weight: 600;
+  border: 1px solid transparent;
 }
 
 .badge--ok {
   background: rgba(34,197,94,0.16);
   color: var(--ok);
-  border: 1px solid rgba(34,197,94,0.35);
+  border-color: rgba(34,197,94,0.35);
+}
+
+.badge--warn {
+  background: rgba(245,158,11,0.16);
+  color: var(--warn);
+  border-color: rgba(245,158,11,0.35);
+}
+
+.badge--bad {
+  background: rgba(239,68,68,0.16);
+  color: var(--bad);
+  border-color: rgba(239,68,68,0.35);
 }
 
 .muted { color: var(--muted); }
-
-.hint {
-  margin-top: 12px;
-  color: var(--muted);
-  line-height: 1.35;
-}
-
-.actions { margin-top: 14px; }
+.small { font-size: 12px; }
 
 .btn {
   display: inline-block;
@@ -124,9 +141,78 @@ body {
   background: rgba(255,255,255,0.02);
   color: var(--text);
   text-decoration: none;
+  cursor: pointer;
+}
+
+.btn--primary {
+  background: rgba(34,197,94,0.16);
+  border-color: rgba(34,197,94,0.35);
+}
+
+.btn--ghost {
+  background: transparent;
 }
 
 .footer {
   border-top: 1px solid var(--border);
   margin-top: 20px;
 }
+
+.form {
+  display: grid;
+  gap: 12px;
+}
+
+.label__title {
+  font-size: 12px;
+  color: var(--muted);
+  margin-bottom: 6px;
+}
+
+.input {
+  width: 100%;
+  padding: 10px 12px;
+  border-radius: 12px;
+  border: 1px solid var(--border);
+  background: rgba(255,255,255,0.02);
+  color: var(--text);
+  outline: none;
+}
+
+.alert {
+  padding: 10px 12px;
+  border-radius: 12px;
+  border: 1px solid transparent;
+  margin-bottom: 12px;
+}
+
+.alert--bad {
+  background: rgba(239,68,68,0.12);
+  border-color: rgba(239,68,68,0.35);
+  color: var(--text);
+}
+
+.grid {
+  display: grid;
+  grid-template-columns: 1fr;
+  gap: 14px;
+}
+
+@media (min-width: 860px) {
+  .grid {
+    grid-template-columns: 1fr 1fr;
+  }
+}
+
+.mono {
+  font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, "Liberation Mono", "Courier New", monospace;
+}
+
+.pre {
+  white-space: pre-wrap;
+  word-break: break-word;
+}
+
+.space { height: 12px; }
+
+.logout { margin: 0; }

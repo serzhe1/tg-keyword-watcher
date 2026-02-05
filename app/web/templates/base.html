@@ -1,5 +1,5 @@
 <!doctype html>
-<html lang="ru">
+<html lang="en">
 <head>
     <meta charset="utf-8" />
     <meta name="viewport" content="width=device-width,initial-scale=1" />
@@ -8,10 +8,10 @@
 </head>
 <body>
 <header class="topbar">
-    <div class="container">
+    <div class="container topbar__row">
         <div class="brand">tg-keyword-watcher</div>
         <nav class="nav">
-            <a class="nav__link nav__link--active" href="/">Dashboard</a>
+            <a class="nav__link {% if nav_active=='dashboard' %}nav__link--active{% endif %}" href="/">Dashboard</a>
             <span class="nav__sep">·</span>
             <span class="nav__link nav__link--disabled">Keywords</span>
             <span class="nav__sep">·</span>
@@ -19,6 +19,10 @@
             <span class="nav__sep">·</span>
             <span class="nav__link nav__link--disabled">Docs</span>
         </nav>
+
+        <form method="post" action="/logout" class="logout">
+            <button class="btn btn--ghost" type="submit">Logout</button>
+        </form>
     </div>
 </header>
 
@@ -28,7 +32,7 @@
 
 <footer class="footer">
     <div class="container">
-        <span class="muted">Server-side UI (Jinja2). Этап 0.</span>
+        <span class="muted">Server-side UI (Jinja2).</span>
     </div>
 </footer>
 </body>
