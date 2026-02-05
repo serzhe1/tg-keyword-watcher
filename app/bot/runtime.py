@@ -3,7 +3,7 @@ from __future__ import annotations
 import asyncio
 import os
 import re
-from datetime import datetime, timezone
+from datetime import datetime
 
 from telethon import TelegramClient
 from telethon.errors import RPCError
@@ -36,12 +36,38 @@ class BotRuntime:
         if self._task:
             await self._task
 
+    def get_client(self) -> TelegramClient | None:
+        """
+        Returns Telethon client when created.
+        Used by next steps (live handlers / backfill).
+        """
+        return self._client
+
     def get_target_chat_id(self) -> int | None:
         """
-        Used by next steps (monitor/forward logic).
         Returns resolved target chat id when connected.
         """
         return self._target_chat_id
+
+    def is_target_chat(self, chat_id: int | None) -> bool:
+        """
+        Prevent infinite forwarding loops.
+        Any event/message from target channel must be ignored.
+        """
+        if chat_id is None or self._target_chat_id is None:
+            return False
+        return int(chat_id) == int(self._target_chat_id)
+
+    def should_monitor_chat(self, chat_id: int | None) -> bool:
+        """
+        Centralized rule: never monitor the target channel.
+        Future rules can be added here (blacklist, etc.).
+        """
+        if chat_id is None:
+            return False
+        if self.is_target_chat(chat_id):
+            return False
+        return True
 
     async def _run_loop(self) -> None:
         """
@@ -185,7 +211,6 @@ class BotRuntime:
 
         matches: list[int] = []
         async for dialog in self._client.iter_dialogs():
-            # dialog.name is the displayed title for chats/channels
             name = (dialog.name or "").strip()
             if not name:
                 continue
@@ -193,8 +218,6 @@ class BotRuntime:
             if self._normalize_title(name) != wanted:
                 continue
 
-            # Found a title match. Store its id.
-            # dialog.id may be negative for channels; Telethon works with int chat_id directly.
             matches.append(int(dialog.id))
 
         if not matches:
