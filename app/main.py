@@ -79,12 +79,18 @@ async def on_shutdown() -> None:
 
 async def _cleanup_loop(repo: Repo) -> None:
     while True:
+        now = datetime.now(timezone.utc)
+        next_run = now.replace(hour=3, minute=0, second=0, microsecond=0)
+        if next_run <= now:
+            next_run = next_run.replace(day=next_run.day + 1)
+        sleep_seconds = max(1, int((next_run - now).total_seconds()))
+        await asyncio.sleep(sleep_seconds)
+
         result = await repo.cleanup()
         await repo.app_status_set_event(
             f"Cleanup done: event_log={result.get('event_log', 0)}, "
             f"forwarded_messages={result.get('forwarded_messages', 0)}"
         )
-        await asyncio.sleep(24 * 60 * 60)
 
 
 @app.get("/health")
