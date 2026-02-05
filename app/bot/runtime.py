@@ -138,7 +138,13 @@ class BotRuntime:
                 await self._disconnect_client()
                 await self._set_connected(False)
                 return False
-
+            # Ensure no updates gap after reconnect (important for channels with high traffic).
+            try:
+                await self._client.catch_up()
+            except Exception as exc:
+                # Do not fail connection, but report the issue for visibility.
+                await self._repo.app_status_set_error(f"Telethon catch_up failed: {exc}")
+                await self._repo.event_error_add(f"Telethon catch_up failed: {exc}")
             # Resolve target channel id by title (dialogs scan).
             resolved = await self._resolve_target_channel_id(target_title)
             if resolved is None:
