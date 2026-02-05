@@ -25,6 +25,7 @@ class BotRuntime:
 
         # Live handlers lifecycle
         self._handlers_installed: bool = False
+        self._checkpoints_initialized: bool = False
 
         # Local in-memory cache to avoid spamming DB with the same status updates.
         self._connected_cache: bool | None = None
@@ -162,6 +163,11 @@ class BotRuntime:
             if prev_target_id != resolved or (prev_target_title or "") != target_title:
                 await self._repo.app_status_set_event(f'Target channel resolved: "{target_title}"')
 
+            # Initialize checkpoints on first startup for all monitored channels.
+            if not self._checkpoints_initialized:
+                await self._initialize_checkpoints()
+                self._checkpoints_initialized = True
+
             # Install live monitoring handlers once per client lifecycle.
             if not self._handlers_installed:
                 self._install_live_handlers()
@@ -280,6 +286,44 @@ class BotRuntime:
 
         return matches[0]
 
+    async def _initialize_checkpoints(self) -> None:
+        if self._client is None:
+            return
+
+        await self._repo.app_status_set_event("Initializing channel checkpoints")
+
+        async for dialog in self._client.iter_dialogs():
+            try:
+                if not (dialog.is_channel or dialog.is_group):
+                    continue
+
+                chat_id = int(dialog.id)
+                if not self.should_monitor_chat(chat_id):
+                    continue
+
+                last_id, _ = await self._repo.checkpoint_get(chat_id)
+                if last_id is not None:
+                    continue
+
+                last_message = None
+                async for msg in self._client.iter_messages(dialog.entity, limit=1):
+                    last_message = msg
+                    break
+
+                if last_message is None:
+                    continue
+
+                await self._repo.checkpoint_upsert(
+                    chat_id,
+                    int(last_message.id),
+                    last_message.date,
+                )
+            except Exception as exc:
+                await self._repo.app_status_set_error(str(exc))
+                await self._repo.event_error_add(str(exc))
+
+        await self._repo.app_status_set_event("Channel checkpoints initialized")
+
     @staticmethod
     def _normalize_title(value: str) -> str:
         v = value.strip().lower().replace("ё", "е")
@@ -310,6 +354,7 @@ class BotRuntime:
         self._target_chat_id = None
         self._target_title = None
         self._handlers_installed = False
+        self._checkpoints_initialized = False
 
         if self._client is None:
             return
