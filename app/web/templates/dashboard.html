@@ -68,6 +68,24 @@
     </div>
 
     <div class="card">
+        <div class="card__title">{{ t("dashboard.target_manage", lang) }}</div>
+
+        {% if error %}
+        <div class="alert alert--bad">{{ error }}</div>
+        {% endif %}
+
+        <form method="post" action="/controls/target-channel" class="form">
+            <div>
+                <div class="label__title">{{ t("dashboard.target_manage", lang) }}</div>
+                <input class="input" name="target_channel" value="{{ target_channel }}" />
+            </div>
+            <input type="hidden" name="lang" value="{{ lang }}" />
+            <button class="btn btn--primary" type="submit">{{ t("dashboard.target_save", lang) }}</button>
+            <div class="muted small">{{ t("dashboard.target_hint", lang) }}</div>
+        </form>
+    </div>
+
+    <div class="card">
         <div class="card__title">{{ t("dashboard.last_error", lang) }}</div>
         {% if last_error %}
         <div class="mono pre">{{ last_error }}</div>

@@ -31,6 +31,9 @@ async def dashboard(request: Request) -> HTMLResponse:
 
     lang, set_cookie = resolve_lang(request)
     repo = request.app.state.repo
+    env_target = os.getenv("TARGET_CHANNEL", "")
+    target_channel = (await repo.app_setting_get("target_channel", env_target) or "").strip()
+    error = (request.query_params.get("error") or "").strip()
     bot_state = await repo.bot_state_get()
     app_status = await repo.app_status_get()
 
@@ -43,8 +46,9 @@ async def dashboard(request: Request) -> HTMLResponse:
             "lang": lang,
             "lang_urls": build_lang_urls(request),
             "t": t,
-            "target_channel": os.getenv("TARGET_CHANNEL", ""),
+            "target_channel": target_channel,
             "session_name": os.getenv("SESSION_NAME", ""),
+            "error": error,
             "connected": bool(app_status.connected),
             "bot_enabled": bool(bot_state.enabled),
             "last_error": app_status.last_error or "",

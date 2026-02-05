@@ -386,3 +386,31 @@ class Repo:
                 return 0
 
         return {"event_log": _count(deleted_logs), "forwarded_messages": _count(deleted_forwards)}
+
+    # ----------------------------
+    # Settings
+    # ----------------------------
+    async def app_setting_get(self, key: str, default: str | None = None) -> str | None:
+        async with self._pool.acquire() as conn:
+            value = await conn.fetchval(
+                "SELECT value FROM app_settings WHERE key = $1;",
+                key,
+            )
+            if value is None:
+                return default
+            return str(value)
+
+    async def app_setting_set(self, key: str, value: str) -> None:
+        async with self._pool.acquire() as conn:
+            await conn.execute(
+                """
+                INSERT INTO app_settings(key, value, updated_at)
+                VALUES ($1, $2, $3)
+                    ON CONFLICT (key)
+                DO UPDATE SET value = EXCLUDED.value,
+                              updated_at = EXCLUDED.updated_at;
+                """,
+                key,
+                value,
+                datetime.now(timezone.utc),
+            )

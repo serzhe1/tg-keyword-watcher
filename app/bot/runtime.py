@@ -110,7 +110,8 @@ class BotRuntime:
             session_filename = os.environ.get("TELEGRAM_SESSION_FILE", "monitor.session").strip()
             session_path = os.path.join(session_dir, session_filename)
 
-            target_title = os.environ.get("TARGET_CHANNEL", "").strip()
+            env_target = os.environ.get("TARGET_CHANNEL", "").strip()
+            target_title = (await self._repo.app_setting_get("target_channel", env_target) or "").strip()
             if not target_title:
                 await self._set_error("Missing TARGET_CHANNEL in .env (must be target channel title)")
                 await self._set_connected(False)
