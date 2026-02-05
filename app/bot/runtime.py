@@ -202,10 +202,6 @@ class BotRuntime:
             try:
                 chat_id = int(event.chat_id) if event.chat_id is not None else None
 
-                # Monitor only groups/channels, ignore private dialogs.
-                if not (event.is_channel or event.is_group):
-                    return
-
                 # Never react to messages from target channel (loop protection).
                 if not self.should_monitor_chat(chat_id):
                     return
