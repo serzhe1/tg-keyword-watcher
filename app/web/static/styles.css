@@ -221,6 +221,10 @@ body {
   letter-spacing: 0.6px;
 }
 
+.table__row--wide {
+  grid-template-columns: 72px 200px 1fr;
+}
+
 .table__cell {
   word-break: break-word;
 }

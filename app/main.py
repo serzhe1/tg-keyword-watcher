@@ -13,6 +13,7 @@ from app.web.routes_auth import router as auth_router
 from app.web.routes_controls import router as controls_router
 from app.web.routes_dashboard import router as dashboard_router
 from app.web.routes_keywords import router as keywords_router
+from app.web.routes_logs import router as logs_router
 
 
 def utc_now_iso() -> str:
@@ -43,6 +44,7 @@ app.include_router(auth_router)
 app.include_router(dashboard_router)
 app.include_router(controls_router)
 app.include_router(keywords_router)
+app.include_router(logs_router)
 
 
 @app.on_event("startup")

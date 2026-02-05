@@ -1,0 +1,32 @@
+{% extends "base.html" %}
+{% block title %}Logs · tg-keyword-watcher{% endblock %}
+
+{% block content %}
+<h1 class="h1">Logs</h1>
+
+<div class="card">
+    <div class="card__title">Latest errors</div>
+    <div class="muted small">Showing last 100 records. Messages are truncated.</div>
+
+    <div class="space"></div>
+
+    {% if logs %}
+    <div class="table">
+        <div class="table__row table__row--head table__row--wide">
+            <div class="table__cell table__cell--num">ID</div>
+            <div class="table__cell">Time (UTC)</div>
+            <div class="table__cell">Message</div>
+        </div>
+        {% for row in logs %}
+        <div class="table__row table__row--wide">
+            <div class="table__cell table__cell--num">{{ row.id }}</div>
+            <div class="table__cell mono">{{ row.created_at }}</div>
+            <div class="table__cell mono">{{ row.message }}</div>
+        </div>
+        {% endfor %}
+    </div>
+    {% else %}
+    <div class="muted">No errors yet</div>
+    {% endif %}
+</div>
+{% endblock %}
