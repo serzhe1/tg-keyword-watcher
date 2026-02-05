@@ -1,3 +1,4 @@
+import asyncio
 import os
 from datetime import datetime, timezone
 from app.bot.runtime import BotRuntime
@@ -60,6 +61,7 @@ async def on_startup() -> None:
     app.state.repo = Repo(pool)
     app.state.bot_runtime = BotRuntime(app.state.repo)
     await app.state.bot_runtime.start()
+    app.state.cleanup_task = asyncio.create_task(_cleanup_loop(app.state.repo))
 
 
 @app.on_event("shutdown")
@@ -70,6 +72,19 @@ async def on_shutdown() -> None:
     runtime = getattr(app.state, "bot_runtime", None)
     if runtime is not None:
         await runtime.stop()
+    cleanup_task = getattr(app.state, "cleanup_task", None)
+    if cleanup_task is not None:
+        cleanup_task.cancel()
+
+
+async def _cleanup_loop(repo: Repo) -> None:
+    while True:
+        result = await repo.cleanup()
+        await repo.app_status_set_event(
+            f"Cleanup done: event_log={result.get('event_log', 0)}, "
+            f"forwarded_messages={result.get('forwarded_messages', 0)}"
+        )
+        await asyncio.sleep(24 * 60 * 60)
 
 
 @app.get("/health")
