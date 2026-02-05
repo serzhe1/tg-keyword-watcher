@@ -320,7 +320,6 @@ class BotRuntime:
                     min_id=int(last_id),
                     reverse=True,
                     limit=None,
-                    batch_size=page_size,
                 ):
                     await self._process_message(chat_id, msg, is_backfill=True)
                     await self._repo.checkpoint_upsert(chat_id, int(msg.id), msg.date)
