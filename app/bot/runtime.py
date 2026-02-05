@@ -146,8 +146,15 @@ class BotRuntime:
                 await self._disconnect_client()
                 return False
 
+            # Preserve last event: do not overwrite it on every reconnect.
+            prev_target_id = self._target_chat_id
+            prev_target_title = self._target_title
+
             self._target_chat_id = resolved
             self._target_title = target_title
+
+            if prev_target_id != resolved or (prev_target_title or "") != target_title:
+                await self._repo.app_status_set_event(f'Target channel resolved: "{target_title}"')
 
             # Install live monitoring handlers once per client lifecycle.
             if not self._handlers_installed:
@@ -243,7 +250,6 @@ class BotRuntime:
             )
             return None
 
-        await self._repo.app_status_set_event(f'Target channel resolved: "{target_title}"')
         return matches[0]
 
     @staticmethod
