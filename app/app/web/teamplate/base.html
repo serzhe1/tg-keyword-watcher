@@ -1,0 +1,35 @@
+<!doctype html>
+<html lang="ru">
+<head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width,initial-scale=1" />
+    <title>{% block title %}tg-keyword-watcher{% endblock %}</title>
+    <link rel="stylesheet" href="/static/styles.css" />
+</head>
+<body>
+<header class="topbar">
+    <div class="container">
+        <div class="brand">tg-keyword-watcher</div>
+        <nav class="nav">
+            <a class="nav__link nav__link--active" href="/">Dashboard</a>
+            <span class="nav__sep">·</span>
+            <span class="nav__link nav__link--disabled">Keywords</span>
+            <span class="nav__sep">·</span>
+            <span class="nav__link nav__link--disabled">Logs</span>
+            <span class="nav__sep">·</span>
+            <span class="nav__link nav__link--disabled">Docs</span>
+        </nav>
+    </div>
+</header>
+
+<main class="container">
+    {% block content %}{% endblock %}
+</main>
+
+<footer class="footer">
+    <div class="container">
+        <span class="muted">Server-side UI (Jinja2). Этап 0.</span>
+    </div>
+</footer>
+</body>
+</html>

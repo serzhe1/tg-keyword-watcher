@@ -1,0 +1,36 @@
+{% extends "base.html" %}
+{% block title %}Dashboard · tg-keyword-watcher{% endblock %}
+
+{% block content %}
+<h1 class="h1">Dashboard</h1>
+
+<div class="card">
+    <div class="card__title">Статус</div>
+    <div class="kv">
+        <div class="kv__row">
+            <div class="kv__k">App</div>
+            <div class="kv__v"><span class="badge badge--ok">RUNNING</span></div>
+        </div>
+        <div class="kv__row">
+            <div class="kv__k">TARGET_CHANNEL</div>
+            <div class="kv__v">{{ target_channel }}</div>
+        </div>
+        <div class="kv__row">
+            <div class="kv__k">SESSION_NAME</div>
+            <div class="kv__v">{{ session_name }}</div>
+        </div>
+        <div class="kv__row">
+            <div class="kv__k">DATABASE_URL</div>
+            <div class="kv__v"><span class="muted">задан через env</span></div>
+        </div>
+    </div>
+
+    <div class="hint">
+        Сейчас это заглушка. На следующих этапах здесь будет: Connected / Bot enabled / Last error / кнопки Enable/Disable/Restart.
+    </div>
+
+    <div class="actions">
+        <a class="btn" href="/health">Health</a>
+    </div>
+</div>
+{% endblock %}

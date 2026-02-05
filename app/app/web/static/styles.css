@@ -1,0 +1,132 @@
+:root {
+  --bg: #0b0c10;
+  --panel: #11131a;
+  --text: #e8e8ea;
+  --muted: #a1a1aa;
+  --border: #232638;
+  --ok: #22c55e;
+  --warn: #f59e0b;
+  --bad: #ef4444;
+}
+
+* { box-sizing: border-box; }
+
+body {
+  margin: 0;
+  font-family: ui-sans-serif, system-ui, -apple-system, Segoe UI, Roboto, Arial, "Apple Color Emoji", "Segoe UI Emoji";
+  background: var(--bg);
+  color: var(--text);
+}
+
+.container {
+  max-width: 980px;
+  padding: 16px;
+  margin: 0 auto;
+}
+
+.topbar {
+  border-bottom: 1px solid var(--border);
+  background: rgba(17,19,26,0.9);
+  position: sticky;
+  top: 0;
+  backdrop-filter: blur(8px);
+}
+
+.brand {
+  font-weight: 700;
+  letter-spacing: 0.2px;
+}
+
+.nav {
+  margin-top: 8px;
+  display: flex;
+  gap: 8px;
+  align-items: center;
+  flex-wrap: wrap;
+}
+
+.nav__link {
+  color: var(--text);
+  text-decoration: none;
+  opacity: 0.9;
+}
+
+.nav__link--active {
+  opacity: 1;
+  font-weight: 600;
+}
+
+.nav__link--disabled {
+  opacity: 0.45;
+}
+
+.nav__sep { opacity: 0.4; }
+
+.h1 {
+  font-size: 22px;
+  margin: 16px 0;
+}
+
+.card {
+  background: var(--panel);
+  border: 1px solid var(--border);
+  border-radius: 14px;
+  padding: 14px;
+}
+
+.card__title {
+  font-weight: 600;
+  margin-bottom: 10px;
+}
+
+.kv__row {
+  display: flex;
+  justify-content: space-between;
+  gap: 12px;
+  padding: 10px 0;
+  border-top: 1px solid rgba(35,38,56,0.7);
+}
+
+.kv__row:first-child { border-top: none; }
+
+.kv__k { color: var(--muted); }
+.kv__v { text-align: right; word-break: break-word; }
+
+.badge {
+  display: inline-block;
+  padding: 2px 10px;
+  border-radius: 999px;
+  font-size: 12px;
+  font-weight: 600;
+}
+
+.badge--ok {
+  background: rgba(34,197,94,0.16);
+  color: var(--ok);
+  border: 1px solid rgba(34,197,94,0.35);
+}
+
+.muted { color: var(--muted); }
+
+.hint {
+  margin-top: 12px;
+  color: var(--muted);
+  line-height: 1.35;
+}
+
+.actions { margin-top: 14px; }
+
+.btn {
+  display: inline-block;
+  padding: 10px 12px;
+  border-radius: 12px;
+  border: 1px solid var(--border);
+  background: rgba(255,255,255,0.02);
+  color: var(--text);
+  text-decoration: none;
+}
+
+.footer {
+  border-top: 1px solid var(--border);
+  margin-top: 20px;
+}
