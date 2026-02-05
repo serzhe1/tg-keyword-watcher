@@ -1,5 +1,6 @@
 import os
 from datetime import datetime, timezone
+from app.bot.runtime import BotRuntime
 
 import asyncpg
 from fastapi import FastAPI
@@ -53,6 +54,8 @@ async def on_startup() -> None:
     pool = await asyncpg.create_pool(dsn=db_url, min_size=1, max_size=10)
     app.state.db_pool = pool
     app.state.repo = Repo(pool)
+    app.state.bot_runtime = BotRuntime(app.state.repo)
+    await app.state.bot_runtime.start()
 
 
 @app.on_event("shutdown")
@@ -60,6 +63,9 @@ async def on_shutdown() -> None:
     pool = getattr(app.state, "db_pool", None)
     if pool is not None:
         await pool.close()
+    runtime = getattr(app.state, "bot_runtime", None)
+    if runtime is not None:
+        await runtime.stop()
 
 
 @app.get("/health")
