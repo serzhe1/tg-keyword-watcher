@@ -2,7 +2,8 @@ from __future__ import annotations
 
 import asyncio
 import os
-from datetime import datetime
+import re
+from datetime import datetime, timezone
 
 from telethon import TelegramClient
 from telethon.errors import RPCError
@@ -18,6 +19,10 @@ class BotRuntime:
 
         self._client: TelegramClient | None = None
 
+        # Target channel cache (resolved from dialogs by title)
+        self._target_chat_id: int | None = None
+        self._target_title: str | None = None
+
         # Local in-memory cache to avoid spamming DB with the same status updates.
         self._connected_cache: bool | None = None
         self._last_error_cache: str | None = None
@@ -30,6 +35,13 @@ class BotRuntime:
         self._stop_event.set()
         if self._task:
             await self._task
+
+    def get_target_chat_id(self) -> int | None:
+        """
+        Used by next steps (monitor/forward logic).
+        Returns resolved target chat id when connected.
+        """
+        return self._target_chat_id
 
     async def _run_loop(self) -> None:
         """
@@ -84,6 +96,7 @@ class BotRuntime:
     async def _ensure_connected(self) -> bool:
         """
         Creates and connects Telethon client using mounted .session file.
+        Resolves target channel by title (TARGET_CHANNEL env).
         Updates app_status.connected and last_error accordingly.
         """
         try:
@@ -92,6 +105,12 @@ class BotRuntime:
             session_dir = os.environ.get("TELEGRAM_SESSION_DIR", "/app/session").strip()
             session_filename = os.environ.get("TELEGRAM_SESSION_FILE", "monitor.session").strip()
             session_path = os.path.join(session_dir, session_filename)
+
+            target_title = os.environ.get("TARGET_CHANNEL", "").strip()
+            if not target_title:
+                await self._set_error("Missing TARGET_CHANNEL in .env (must be target channel title)")
+                await self._set_connected(False)
+                return False
 
             api_id = int(api_id_raw or "0")
             if api_id <= 0 or not api_hash:
@@ -119,6 +138,16 @@ class BotRuntime:
                 await self._set_connected(False)
                 return False
 
+            # Resolve target channel id by title (private channels are resolvable only from dialogs).
+            resolved = await self._resolve_target_channel_id(target_title)
+            if resolved is None:
+                await self._set_connected(False)
+                await self._disconnect_client()
+                return False
+
+            self._target_chat_id = resolved
+            self._target_title = target_title
+
             await self._set_connected(True)
             await self._set_error(None)
             return True
@@ -143,7 +172,65 @@ class BotRuntime:
             await self._disconnect_client()
             return False
 
+    async def _resolve_target_channel_id(self, target_title: str) -> int | None:
+        """
+        Resolves target chat id ONLY by dialog title.
+        This works for private channels if the account is already a member (dialog exists).
+        """
+        if self._client is None:
+            await self._set_error("Internal error: Telethon client not initialized")
+            return None
+
+        wanted = self._normalize_title(target_title)
+
+        matches: list[int] = []
+        async for dialog in self._client.iter_dialogs():
+            # dialog.name is the displayed title for chats/channels
+            name = (dialog.name or "").strip()
+            if not name:
+                continue
+
+            if self._normalize_title(name) != wanted:
+                continue
+
+            # Found a title match. Store its id.
+            # dialog.id may be negative for channels; Telethon works with int chat_id directly.
+            matches.append(int(dialog.id))
+
+        if not matches:
+            await self._set_error(
+                f'Target channel with title "{target_title}" was not found in account dialogs. '
+                f"Make sure the account is already joined and the title matches exactly."
+            )
+            return None
+
+        if len(matches) > 1:
+            await self._set_error(
+                f'Multiple dialogs found with title "{target_title}". '
+                f"Rename the target channel to a unique title to avoid sending to a wrong destination."
+            )
+            return None
+
+        await self._repo.app_status_set_event(f'Target channel resolved: "{target_title}"')
+        return matches[0]
+
+    @staticmethod
+    def _normalize_title(value: str) -> str:
+        """
+        Normalization rules:
+        - case-insensitive
+        - treat 'ё' as 'е'
+        - collapse multiple spaces
+        """
+        v = value.strip().lower().replace("ё", "е")
+        v = re.sub(r"\s+", " ", v)
+        return v
+
     async def _disconnect_client(self) -> None:
+        # Reset caches related to Telegram session
+        self._target_chat_id = None
+        self._target_title = None
+
         if self._client is None:
             return
         try:
