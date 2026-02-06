@@ -359,7 +359,7 @@ body {
 }
 
 .burger {
-  display: none; /* включим только на mobile */
+  display: none; /* enabled only on mobile */
   width: 42px;
   height: 42px;
   border-radius: 12px;
@@ -395,7 +395,7 @@ body {
 .burger__bars::after { top: 6px; }
 
 .drawer {
-  display: none; /* включим только на mobile */
+  display: none; /* enabled only on mobile */
   position: fixed;
   inset: 0;
   pointer-events: none; /
@@ -525,7 +525,7 @@ body {
   text-align: center;
 }
 
-/* Открытие drawer */
+/* Drawer open state */
 .nav-toggle:checked ~ .drawer .drawer__backdrop {
   opacity: 1;
   pointer-events: auto;
@@ -581,19 +581,19 @@ body {
   display: block;
 }
 
-/* чтобы длинные сообщения не шли вертикально по буквам */
+/* prevent long messages from stacking vertically by letters */
 .logs-msg {
   word-break: break-word;
   overflow-wrap: anywhere;
 }
 
 @media (max-width: 720px) {
-  /* скрываем заголовок таблицы — в каждой строке будут свои label'ы */
+  /* hide table header — each row has its own labels */
   .logs-head {
     display: none;
   }
 
-  /* строка превращается в "карточку" из 3 рядов */
+  /* row becomes a "card" with 3 rows */
   .logs-row {
     grid-template-columns: 1fr !important;
     gap: 10px;
@@ -610,7 +610,7 @@ body {
     text-align: left;
   }
 
-  /* время и сообщение пусть нормально переносятся */
+  /* allow time and message to wrap naturally */
   .logs-time {
     word-break: break-word;
     overflow-wrap: anywhere;

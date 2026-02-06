@@ -11,7 +11,7 @@
     <div class="container topbar__row">
         <div class="brand">{{ app_name }}</div>
 
-        <!-- Desktop nav (как было) -->
+        <!-- Desktop nav (as before) -->
         <nav class="nav nav--desktop">
             <a class="nav__link {% if nav_active=='dashboard' %}nav__link--active{% endif %}" href="/">{{ t("nav.dashboard", lang) }}</a>
             <span class="nav__sep">·</span>
@@ -40,7 +40,7 @@
 
         <!-- Mobile drawer -->
         <div class="drawer" aria-hidden="true">
-            <!-- клик по фону закрывает меню -->
+            <!-- Clicking the overlay closes the menu -->
             <label class="drawer__backdrop" for="nav-toggle"></label>
 
             <aside class="drawer__panel" role="dialog" aria-modal="true" aria-label="Menu">

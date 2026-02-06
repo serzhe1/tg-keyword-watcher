@@ -43,7 +43,7 @@ CREATE TABLE IF NOT EXISTS event_log (
 
 CREATE INDEX IF NOT EXISTS idx_event_log_created_at ON event_log(created_at);
 
--- bot_state (1 строка)
+-- bot_state (1 row)
 CREATE TABLE IF NOT EXISTS bot_state (
                                          id SMALLINT PRIMARY KEY DEFAULT 1,
                                          enabled BOOLEAN NOT NULL DEFAULT FALSE,
@@ -54,7 +54,7 @@ INSERT INTO bot_state(id, enabled)
 VALUES (1, FALSE)
     ON CONFLICT (id) DO NOTHING;
 
--- app_status (1 строка)
+-- app_status (1 row)
 CREATE TABLE IF NOT EXISTS app_status (
                                           id SMALLINT PRIMARY KEY DEFAULT 1,
                                           connected BOOLEAN NOT NULL DEFAULT FALSE,
