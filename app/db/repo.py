@@ -244,6 +244,28 @@ class Repo:
             )
             return [dict(r) for r in rows]
 
+    async def event_error_list(self, limit: int, offset: int) -> tuple[list[dict[str, Any]], int]:
+        async with self._pool.acquire() as conn:
+            rows = await conn.fetch(
+                """
+                SELECT id, message, created_at
+                FROM event_log
+                WHERE level = 'error'
+                ORDER BY created_at DESC
+                    LIMIT $1 OFFSET $2;
+                """,
+                limit,
+                offset,
+            )
+            total = await conn.fetchval(
+                """
+                SELECT COUNT(*)
+                FROM event_log
+                WHERE level = 'error';
+                """
+            )
+            return [dict(r) for r in rows], int(total)
+
     # ----------------------------
     # Singleton tables: bot_state / app_status
     # ----------------------------

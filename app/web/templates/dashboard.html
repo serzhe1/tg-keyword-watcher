@@ -1,5 +1,5 @@
 {% extends "base.html" %}
-{% block title %}{{ t("dashboard.title", lang) }} · tg-keyword-watcher{% endblock %}
+{% block title %}{{ t("dashboard.title", lang) }} · {{ app_name }}{% endblock %}
 
 {% block content %}
 <h1 class="h1">{{ t("dashboard.title", lang) }}</h1>
@@ -12,22 +12,18 @@
             <div class="kv__row">
                 <div class="kv__k">{{ t("dashboard.connected", lang) }}</div>
                 <div class="kv__v">
-                    {% if connected %}
-                    <span class="badge badge--ok">{{ t("common.yes", lang) }}</span>
-                    {% else %}
-                    <span class="badge badge--bad">{{ t("common.no", lang) }}</span>
-                    {% endif %}
+                    <span id="status-connected" class="badge {% if connected %}badge--ok{% else %}badge--bad{% endif %}">
+                        {% if connected %}{{ t("common.yes", lang) }}{% else %}{{ t("common.no", lang) }}{% endif %}
+                    </span>
                 </div>
             </div>
 
             <div class="kv__row">
                 <div class="kv__k">{{ t("dashboard.bot_enabled", lang) }}</div>
                 <div class="kv__v">
-                    {% if bot_enabled %}
-                    <span class="badge badge--ok">{{ t("common.yes", lang) }}</span>
-                    {% else %}
-                    <span class="badge badge--warn">{{ t("common.no", lang) }}</span>
-                    {% endif %}
+                    <span id="status-enabled" class="badge {% if bot_enabled %}badge--ok{% else %}badge--warn{% endif %}">
+                        {% if bot_enabled %}{{ t("common.yes", lang) }}{% else %}{{ t("common.no", lang) }}{% endif %}
+                    </span>
                 </div>
             </div>
 
@@ -87,21 +83,88 @@
 
     <div class="card">
         <div class="card__title">{{ t("dashboard.last_error", lang) }}</div>
-        {% if last_error %}
-        <div class="mono pre">{{ last_error }}</div>
-        {% else %}
-        <div class="muted">{{ t("dashboard.no_errors", lang) }}</div>
-        {% endif %}
+        <div id="last-error" class="{% if last_error %}mono pre{% else %}muted{% endif %}">
+            {% if last_error %}
+            {{ last_error }}
+            {% else %}
+            {{ t("dashboard.no_errors", lang) }}
+            {% endif %}
+        </div>
 
         <div class="space"></div>
 
         <div class="card__title">{{ t("dashboard.last_event", lang) }}</div>
-        {% if last_event_time %}
-        <div class="muted small">{{ last_event_time }}</div>
-        <div class="mono pre">{{ last_event_message }}</div>
-        {% else %}
-        <div class="muted">{{ t("dashboard.no_events", lang) }}</div>
-        {% endif %}
+        <div id="last-event-time" class="muted small">
+            {% if last_event_time %}{{ last_event_time }}{% else %}{% endif %}
+        </div>
+        <div id="last-event-message" class="{% if last_event_message %}mono pre{% else %}muted{% endif %}">
+            {% if last_event_message %}
+            {{ last_event_message }}
+            {% else %}
+            {{ t("dashboard.no_events", lang) }}
+            {% endif %}
+        </div>
     </div>
 </div>
+
+<script>
+(() => {
+  const yesText = "{{ t('common.yes', lang) }}";
+  const noText = "{{ t('common.no', lang) }}";
+  const noErrorsText = "{{ t('dashboard.no_errors', lang) }}";
+  const noEventsText = "{{ t('dashboard.no_events', lang) }}";
+
+  const connectedEl = document.getElementById("status-connected");
+  const enabledEl = document.getElementById("status-enabled");
+  const lastErrorEl = document.getElementById("last-error");
+  const lastEventTimeEl = document.getElementById("last-event-time");
+  const lastEventMessageEl = document.getElementById("last-event-message");
+
+  const applyBadge = (el, ok, okClass, badClass) => {
+    el.classList.remove("badge--ok", "badge--bad", "badge--warn");
+    el.classList.add(ok ? okClass : badClass);
+    el.textContent = ok ? yesText : noText;
+  };
+
+  const updateStatus = async () => {
+    try {
+      const resp = await fetch("/api/status", { headers: { "Accept": "application/json" } });
+      if (!resp.ok) {
+        return;
+      }
+      const data = await resp.json();
+
+      applyBadge(connectedEl, !!data.connected, "badge--ok", "badge--bad");
+      applyBadge(enabledEl, !!data.bot_enabled, "badge--ok", "badge--warn");
+
+      if (data.last_error) {
+        lastErrorEl.className = "mono pre";
+        lastErrorEl.textContent = data.last_error;
+      } else {
+        lastErrorEl.className = "muted";
+        lastErrorEl.textContent = noErrorsText;
+      }
+
+      if (data.last_event_time) {
+        lastEventTimeEl.textContent = data.last_event_time;
+      } else {
+        lastEventTimeEl.textContent = "";
+      }
+
+      if (data.last_event_message) {
+        lastEventMessageEl.className = "mono pre";
+        lastEventMessageEl.textContent = data.last_event_message;
+      } else {
+        lastEventMessageEl.className = "muted";
+        lastEventMessageEl.textContent = noEventsText;
+      }
+    } catch (_) {
+      // Ignore network errors; next tick will retry.
+    }
+  };
+
+  updateStatus();
+  setInterval(updateStatus, 5000);
+})();
+</script>
 {% endblock %}

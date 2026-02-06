@@ -29,7 +29,19 @@ async def logs_page(request: Request) -> HTMLResponse:
 
     lang, set_cookie = resolve_lang(request)
     repo = request.app.state.repo
-    rows = await repo.event_error_latest(limit=100)
+    try:
+        page = int(request.query_params.get("page") or "1")
+    except ValueError:
+        page = 1
+    page = max(page, 1)
+    limit = 20
+    offset = (page - 1) * limit
+    rows, total = await repo.event_error_list(limit=limit, offset=offset)
+    total_pages = max(1, (total + limit - 1) // limit)
+    if page > total_pages:
+        page = total_pages
+        offset = (page - 1) * limit
+        rows, total = await repo.event_error_list(limit=limit, offset=offset)
     logs = [
         {
             "id": r["id"],
@@ -50,6 +62,9 @@ async def logs_page(request: Request) -> HTMLResponse:
             "lang_urls": build_lang_urls(request),
             "t": t,
             "logs": logs,
+            "page": page,
+            "total_pages": total_pages,
+            "offset": offset,
         },
     )
     apply_lang_cookie(resp, lang, set_cookie)

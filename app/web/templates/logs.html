@@ -1,5 +1,5 @@
 {% extends "base.html" %}
-{% block title %}{{ t("logs.title", lang) }} · tg-keyword-watcher{% endblock %}
+{% block title %}{{ t("logs.title", lang) }} · {{ app_name }}{% endblock %}
 
 {% block content %}
 <h1 class="h1">{{ t("logs.title", lang) }}</h1>
@@ -24,6 +24,20 @@
             <div class="table__cell mono">{{ row.message }}</div>
         </div>
         {% endfor %}
+    </div>
+    <div class="space"></div>
+    <div class="pagination">
+        {% if page > 1 %}
+        <a class="btn btn--ghost btn--icon" href="/logs?page={{ page - 1 }}&lang={{ lang }}" aria-label="Prev">&larr;</a>
+        {% else %}
+        <span class="btn btn--ghost btn--disabled btn--icon" aria-hidden="true">&larr;</span>
+        {% endif %}
+        <span class="muted small">{{ t("logs.page", lang) }} {{ page }} {{ t("logs.of", lang) }} {{ total_pages }}</span>
+        {% if page < total_pages %}
+        <a class="btn btn--ghost btn--icon" href="/logs?page={{ page + 1 }}&lang={{ lang }}" aria-label="Next">&rarr;</a>
+        {% else %}
+        <span class="btn btn--ghost btn--disabled btn--icon" aria-hidden="true">&rarr;</span>
+        {% endif %}
     </div>
     {% else %}
     <div class="muted">{{ t("logs.empty", lang) }}</div>

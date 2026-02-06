@@ -4,7 +4,7 @@ import os
 from datetime import datetime, timezone
 
 from fastapi import APIRouter, Request
-from fastapi.responses import HTMLResponse
+from fastapi.responses import HTMLResponse, JSONResponse
 from fastapi.templating import Jinja2Templates
 
 from app.web.deps import RedirectToLogin, require_auth
@@ -59,3 +59,24 @@ async def dashboard(request: Request) -> HTMLResponse:
     )
     apply_lang_cookie(resp, lang, set_cookie)
     return resp
+
+
+@router.get("/api/status", response_class=JSONResponse)
+async def dashboard_status(request: Request) -> JSONResponse:
+    try:
+        require_auth(request)
+    except RedirectToLogin:
+        return JSONResponse({"error": "unauthorized"}, status_code=401)
+
+    repo = request.app.state.repo
+    bot_state = await repo.bot_state_get()
+    app_status = await repo.app_status_get()
+    return JSONResponse(
+        {
+            "connected": bool(app_status.connected),
+            "bot_enabled": bool(bot_state.enabled),
+            "last_error": app_status.last_error or "",
+            "last_event_time": app_status.last_event_time.isoformat() if app_status.last_event_time else "",
+            "last_event_message": app_status.last_event_message or "",
+        }
+    )

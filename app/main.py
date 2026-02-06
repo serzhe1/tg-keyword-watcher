@@ -39,6 +39,7 @@ require_dir(TEMPLATES_DIR)
 require_dir(STATIC_DIR)
 
 templates = Jinja2Templates(directory=TEMPLATES_DIR)
+templates.env.globals["app_name"] = os.getenv("APP_NAME", "tg-keyword-watcher")
 app.mount("/static", StaticFiles(directory=STATIC_DIR), name="static")
 
 # Routes
