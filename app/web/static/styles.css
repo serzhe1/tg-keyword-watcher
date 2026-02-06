@@ -616,3 +616,26 @@ body {
     overflow-wrap: anywhere;
   }
 }
+
+/* Docs: make wide tables readable on mobile */
+@media (max-width: 720px) {
+  .docs .table__row--wide {
+    grid-template-columns: 1fr !important;
+    gap: 10px;
+  }
+
+  .docs .table__row--wide:first-child {
+    display: none;
+  }
+
+  .docs .table__cell {
+    text-align: left;
+    overflow-wrap: anywhere;
+    word-break: break-word;
+  }
+
+  .docs .table__cell--num {
+    font-weight: 600;
+    color: var(--text);
+  }
+}
