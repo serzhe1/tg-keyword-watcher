@@ -558,3 +558,12 @@ body {
     white-space: nowrap;
   }
 }
+
+.stack {
+  display: grid;
+  gap: 14px;
+}
+
+.card--compact {
+  padding: 12px;
+}
