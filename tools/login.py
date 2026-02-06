@@ -5,7 +5,7 @@ from telethon import TelegramClient
 API_ID = int(os.environ["TELEGRAM_API_ID"])
 API_HASH = os.environ["TELEGRAM_API_HASH"]
 
-SESSION_DIR = os.environ.get("SESSION_DIR_LOCAL", "./data/session")
+SESSION_DIR = os.environ.get("SESSION_DIR_LOCAL", "../data/session")
 SESSION_NAME = os.environ.get("SESSION_NAME", "monitor")
 
 os.makedirs(SESSION_DIR, exist_ok=True)

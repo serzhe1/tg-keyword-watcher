@@ -19,6 +19,11 @@ async def load_migrations() -> list[Migration]:
         raise RuntimeError(f"Migrations dir not found: {MIGRATIONS_DIR}")
 
     files = sorted([p for p in MIGRATIONS_DIR.glob("*.sql") if p.is_file()])
+    # Ensure initial schema is applied before any incremental migrations.
+    files = sorted(
+        files,
+        key=lambda p: (0 if p.name == "001_init.sql" else 1, p.name),
+    )
     return [Migration(filename=p.name, sql=p.read_text(encoding="utf-8")) for p in files]
 
 

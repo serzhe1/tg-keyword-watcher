@@ -335,12 +335,13 @@ class BotRuntime:
         msg_id = 0
         try:
             msg_id = int(getattr(message, "id", 0) or 0)
-            text = (getattr(message, "message", "") or "").strip()
-            if len(text) > 120:
-                text = text[:120] + "..."
+            raw_text = (getattr(message, "message", "") or "").strip()
+            preview_text = raw_text
+            if len(preview_text) > 120:
+                preview_text = preview_text[:120] + "..."
 
             keywords = await self._repo.keyword_all()
-            matched = self._find_keywords(text, keywords)
+            matched = self._find_keywords(raw_text, keywords)
 
             if not matched:
                 return
@@ -353,7 +354,7 @@ class BotRuntime:
             prefix = f"Matched keywords: {', '.join(matched)} | "
             source = "backfill" if is_backfill else "live"
             await self._repo.app_status_set_event(
-                f"{prefix}{source} message: chat_id={chat_id} message_id={msg_id} text={text}"
+                f"{prefix}{source} message: chat_id={chat_id} message_id={msg_id} text={preview_text}"
             )
 
             if self._client is None or self._target_chat_id is None:
