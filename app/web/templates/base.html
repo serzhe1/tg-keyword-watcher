@@ -10,7 +10,9 @@
 <header class="topbar">
     <div class="container topbar__row">
         <div class="brand">{{ app_name }}</div>
-        <nav class="nav">
+
+        <!-- Desktop nav (как было) -->
+        <nav class="nav nav--desktop">
             <a class="nav__link {% if nav_active=='dashboard' %}nav__link--active{% endif %}" href="/">{{ t("nav.dashboard", lang) }}</a>
             <span class="nav__sep">·</span>
             <a class="nav__link {% if nav_active=='keywords' %}nav__link--active{% endif %}" href="/keywords">{{ t("nav.keywords", lang) }}</a>
@@ -20,15 +22,53 @@
             <a class="nav__link {% if nav_active=='docs' %}nav__link--active{% endif %}" href="/docs">{{ t("nav.docs", lang) }}</a>
         </nav>
 
-        <div class="lang-switch">
+        <div class="lang-switch lang-switch--desktop">
             <a class="lang-switch__link {% if lang=='ru' %}lang-switch__link--active{% endif %}" href="{{ lang_urls['ru'] }}">{{ t("lang.ru", lang) }}</a>
             <span class="lang-switch__sep">/</span>
             <a class="lang-switch__link {% if lang=='en' %}lang-switch__link--active{% endif %}" href="{{ lang_urls['en'] }}">{{ t("lang.en", lang) }}</a>
         </div>
 
-        <form method="post" action="/logout" class="logout">
+        <form method="post" action="/logout" class="logout logout--desktop">
             <button class="btn btn--ghost" type="submit">{{ t("nav.logout", lang) }}</button>
         </form>
+
+        <!-- Mobile burger -->
+        <input id="nav-toggle" class="nav-toggle" type="checkbox" aria-label="Open menu" />
+        <label class="burger" for="nav-toggle" aria-hidden="true">
+            <span class="burger__bars"></span>
+        </label>
+
+        <!-- Mobile drawer -->
+        <div class="drawer" aria-hidden="true">
+            <!-- клик по фону закрывает меню -->
+            <label class="drawer__backdrop" for="nav-toggle"></label>
+
+            <aside class="drawer__panel" role="dialog" aria-modal="true" aria-label="Menu">
+                <div class="drawer__header">
+                    <div class="drawer__title">{{ app_name }}</div>
+                    <label class="drawer__close btn btn--ghost" for="nav-toggle" aria-label="Close menu">✕</label>
+                </div>
+
+                <nav class="drawer__nav">
+                    <a class="drawer__link {% if nav_active=='dashboard' %}drawer__link--active{% endif %}" href="/">{{ t("nav.dashboard", lang) }}</a>
+                    <a class="drawer__link {% if nav_active=='keywords' %}drawer__link--active{% endif %}" href="/keywords">{{ t("nav.keywords", lang) }}</a>
+                    <a class="drawer__link {% if nav_active=='logs' %}drawer__link--active{% endif %}" href="/logs">{{ t("nav.logs", lang) }}</a>
+                    <a class="drawer__link {% if nav_active=='docs' %}drawer__link--active{% endif %}" href="/docs">{{ t("nav.docs", lang) }}</a>
+                </nav>
+
+                <div class="drawer__section">
+                    <div class="drawer__label">{{ t("lang.ru", lang) }} / {{ t("lang.en", lang) }}</div>
+                    <div class="drawer__langs">
+                        <a class="drawer__pill {% if lang=='ru' %}drawer__pill--active{% endif %}" href="{{ lang_urls['ru'] }}">{{ t("lang.ru", lang) }}</a>
+                        <a class="drawer__pill {% if lang=='en' %}drawer__pill--active{% endif %}" href="{{ lang_urls['en'] }}">{{ t("lang.en", lang) }}</a>
+                    </div>
+                </div>
+
+                <form method="post" action="/logout" class="drawer__logout">
+                    <button class="btn btn--primary drawer__logout-btn" type="submit">{{ t("nav.logout", lang) }}</button>
+                </form>
+            </aside>
+        </div>
     </div>
 </header>
 
