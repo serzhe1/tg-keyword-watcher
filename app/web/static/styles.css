@@ -567,3 +567,52 @@ body {
 .card--compact {
   padding: 12px;
 }
+
+/* Logs: mobile-friendly layout */
+.logs-label {
+  display: none;
+  color: var(--muted);
+  font-size: 12px;
+  letter-spacing: 0.6px;
+  text-transform: uppercase;
+}
+
+.logs-value {
+  display: block;
+}
+
+/* чтобы длинные сообщения не шли вертикально по буквам */
+.logs-msg {
+  word-break: break-word;
+  overflow-wrap: anywhere;
+}
+
+@media (max-width: 720px) {
+  /* скрываем заголовок таблицы — в каждой строке будут свои label'ы */
+  .logs-head {
+    display: none;
+  }
+
+  /* строка превращается в "карточку" из 3 рядов */
+  .logs-row {
+    grid-template-columns: 1fr !important;
+    gap: 10px;
+  }
+
+  .logs-label {
+    display: block;
+    margin-bottom: 4px;
+  }
+
+  .logs-id,
+  .logs-time,
+  .logs-msg {
+    text-align: left;
+  }
+
+  /* время и сообщение пусть нормально переносятся */
+  .logs-time {
+    word-break: break-word;
+    overflow-wrap: anywhere;
+  }
+}

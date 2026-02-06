@@ -11,28 +11,41 @@
     <div class="space"></div>
 
     {% if logs %}
-    <div class="table">
-        <div class="table__row table__row--head table__row--wide">
+    <div class="table logs-table">
+        <div class="table__row table__row--head table__row--wide logs-head">
             <div class="table__cell table__cell--num">{{ t("logs.table.id", lang) }}</div>
             <div class="table__cell">{{ t("logs.table.time", lang) }}</div>
             <div class="table__cell">{{ t("logs.table.message", lang) }}</div>
         </div>
         {% for row in logs %}
-        <div class="table__row table__row--wide">
-            <div class="table__cell table__cell--num">{{ row.id }}</div>
-            <div class="table__cell mono">{{ row.created_at }}</div>
-            <div class="table__cell mono">{{ row.message }}</div>
+        <div class="table__row table__row--wide logs-row">
+            <div class="table__cell table__cell--num logs-id">
+                <span class="logs-label">{{ t("logs.table.id", lang) }}</span>
+                <span class="logs-value">{{ row.id }}</span>
+            </div>
+            <div class="table__cell mono logs-time">
+                <span class="logs-label">{{ t("logs.table.time", lang) }}</span>
+                <span class="logs-value">{{ row.created_at }}</span>
+            </div>
+            <div class="table__cell mono logs-msg">
+                <span class="logs-label">{{ t("logs.table.message", lang) }}</span>
+                <span class="logs-value">{{ row.message }}</span>
+            </div>
         </div>
         {% endfor %}
     </div>
+
     <div class="space"></div>
+
     <div class="pagination">
         {% if page > 1 %}
         <a class="btn btn--ghost btn--icon" href="/logs?page={{ page - 1 }}&lang={{ lang }}" aria-label="Prev">&larr;</a>
         {% else %}
         <span class="btn btn--ghost btn--disabled btn--icon" aria-hidden="true">&larr;</span>
         {% endif %}
+
         <span class="muted small">{{ t("logs.page", lang) }} {{ page }} {{ t("logs.of", lang) }} {{ total_pages }}</span>
+
         {% if page < total_pages %}
         <a class="btn btn--ghost btn--icon" href="/logs?page={{ page + 1 }}&lang={{ lang }}" aria-label="Next">&rarr;</a>
         {% else %}
