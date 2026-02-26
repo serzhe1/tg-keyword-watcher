@@ -7,6 +7,7 @@ It scans channels and groups for keywords and forwards matched messages to a tar
 - Monitors all channels and groups the account is subscribed to
 - Searches messages by keywords (case-insensitive, `е` equals `ё`, substring match)
 - Forwards matches to the target channel with a short preface message
+- Ignores comments/replies and forwards only original posts
 - Prevents duplicates with idempotent DB logic
 - Supports backfill after downtime using per-channel checkpoints
 - Provides an admin UI for status, keywords, logs, and docs

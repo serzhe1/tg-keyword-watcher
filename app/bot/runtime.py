@@ -335,6 +335,9 @@ class BotRuntime:
         msg_id = 0
         try:
             msg_id = int(getattr(message, "id", 0) or 0)
+            if not self._is_original_post(message):
+                return
+
             raw_text = (getattr(message, "message", "") or "").strip()
             preview_text = raw_text
             if len(preview_text) > 120:
@@ -368,6 +371,16 @@ class BotRuntime:
             if claimed and msg_id:
                 await self._repo.forwarded_mark_failed(chat_id, msg_id, str(exc))
             raise
+
+    @staticmethod
+    def _is_original_post(message: object) -> bool:
+        """
+        Telegram comments are represented as reply messages.
+        Only top-level non-reply messages are treated as original posts.
+        """
+        if bool(getattr(message, "is_reply", False)):
+            return False
+        return getattr(message, "reply_to", None) is None
 
     @staticmethod
     def _normalize_title(value: str) -> str:
